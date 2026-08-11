@@ -340,6 +340,88 @@ export default function GrafoPage() {
   const [createType, setCreateType] = useState<'FINANZA' | 'TAREA' | 'LIBRO' | 'CITA' | 'LINK' | 'PELICULA' | 'SERIE' | 'PROYECTO'>('FINANZA');
   const [selectedEntidadId, setSelectedEntidadId] = useState('0');
 
+  // Dual View & Secondary Panel states
+  const [showSecondaryPanel, setShowSecondaryPanel] = useState(true);
+  const [secondaryFilter, setSecondaryFilter] = useState<'ALL' | 'TAREAS' | 'FINANZAS' | 'ENTIDADES'>('ALL');
+
+  const getLinkedItemsForNode = useCallback((node: GraphNode | null) => {
+    if (!node || !data) return { tasks: [], finances: [], entities: [], projects: [], links: [], allItems: [] };
+
+    const connectedNodeIds = new Set<string>();
+    data.links.forEach((l) => {
+      const src = getNodeId(l.source);
+      const tgt = getNodeId(l.target);
+      if (src === node.id) connectedNodeIds.add(tgt);
+      if (tgt === node.id) connectedNodeIds.add(src);
+    });
+
+    const nodeNameLower = (node.name || '').toLowerCase();
+    const isUrgentesHub =
+      node.id === 'proj-urgentes' ||
+      nodeNameLower.includes('urgente') ||
+      (node.type === 'PROYECTO' && nodeNameLower.includes('tarea'));
+
+    let tasks: GraphNode[] = [];
+    let finances: GraphNode[] = [];
+    let entities: GraphNode[] = [];
+    let projects: GraphNode[] = [];
+    let links: GraphNode[] = [];
+
+    if (isUrgentesHub) {
+      tasks = data.nodes.filter((n) => {
+        if (n.type !== 'TAREA') return false;
+        if (n.extra?.urgente) return true;
+        if (connectedNodeIds.has(n.id)) return true;
+        if (node.type === 'PROYECTO' && dbId(node.id) === n.extra?.proyecto_id) return true;
+        return false;
+      });
+    } else if (node.type === 'PROYECTO') {
+      const projDbId = dbId(node.id);
+      tasks = data.nodes.filter((n) => n.type === 'TAREA' && (connectedNodeIds.has(n.id) || n.extra?.proyecto_id === projDbId));
+      finances = data.nodes.filter((n) => n.type === 'FINANZA' && (connectedNodeIds.has(n.id) || n.extra?.proyecto_id === projDbId));
+      links = data.nodes.filter((n) => (n.type === 'LINKS' || n.type === 'CITA' || n.type === 'LIBRO') && connectedNodeIds.has(n.id));
+    } else if (['EMPRESA', 'PERSONA', 'SERVICIO'].includes(node.type)) {
+      const entDbId = dbId(node.id);
+      const childProjIds = new Set(data.nodes.filter((n) => n.type === 'PROYECTO' && (connectedNodeIds.has(n.id) || n.extra?.entidad_id === entDbId)).map((n) => dbId(n.id)));
+      tasks = data.nodes.filter((n) => n.type === 'TAREA' && (connectedNodeIds.has(n.id) || (n.extra?.proyecto_id && childProjIds.has(n.extra.proyecto_id))));
+      finances = data.nodes.filter((n) => n.type === 'FINANZA' && (connectedNodeIds.has(n.id) || n.extra?.entidad_id === entDbId || (n.extra?.proyecto_id && childProjIds.has(n.extra.proyecto_id))));
+      projects = data.nodes.filter((n) => n.type === 'PROYECTO' && (connectedNodeIds.has(n.id) || n.extra?.entidad_id === entDbId));
+      entities = data.nodes.filter((n) => ['EMPRESA', 'PERSONA', 'SERVICIO'].includes(n.type) && connectedNodeIds.has(n.id) && n.id !== node.id);
+    } else if (node.type === 'MES') {
+      tasks = data.nodes.filter((n) => n.type === 'TAREA' && connectedNodeIds.has(n.id));
+      finances = data.nodes.filter((n) => n.type === 'FINANZA' && connectedNodeIds.has(n.id));
+      links = data.nodes.filter((n) => (n.type === 'LIBRO' || n.type === 'PELICULA' || n.type === 'SERIE') && connectedNodeIds.has(n.id));
+    } else if (node.type === 'HUB_FINANZAS') {
+      finances = data.nodes.filter((n) => n.type === 'FINANZA');
+    } else {
+      tasks = data.nodes.filter((n) => n.type === 'TAREA' && connectedNodeIds.has(n.id) && n.id !== node.id);
+      finances = data.nodes.filter((n) => n.type === 'FINANZA' && connectedNodeIds.has(n.id) && n.id !== node.id);
+      entities = data.nodes.filter((n) => ['EMPRESA', 'PERSONA', 'SERVICIO'].includes(n.type) && connectedNodeIds.has(n.id));
+      projects = data.nodes.filter((n) => n.type === 'PROYECTO' && connectedNodeIds.has(n.id));
+    }
+
+    const uniqueTasks = Array.from(new Map(tasks.map((t) => [t.id, t])).values());
+    const uniqueFinances = Array.from(new Map(finances.map((f) => [f.id, f])).values());
+    const uniqueEntities = Array.from(new Map(entities.map((e) => [e.id, e])).values());
+    const uniqueProjects = Array.from(new Map(projects.map((p) => [p.id, p])).values());
+    const uniqueLinks = Array.from(new Map(links.map((l) => [l.id, l])).values());
+
+    const allItems = [...uniqueTasks, ...uniqueFinances, ...uniqueEntities, ...uniqueProjects, ...uniqueLinks];
+
+    return {
+      tasks: uniqueTasks,
+      finances: uniqueFinances,
+      entities: uniqueEntities,
+      projects: uniqueProjects,
+      links: uniqueLinks,
+      allItems,
+    };
+  }, [data]);
+
+  const linkedItems = useMemo(() => {
+    return getLinkedItemsForNode(drawerNode);
+  }, [drawerNode, getLinkedItemsForNode]);
+
   // Edit form state
   const [editDesc, setEditDesc] = useState('');
   const [editMonto, setEditMonto] = useState('');
@@ -1051,13 +1133,17 @@ export default function GrafoPage() {
   // ── Node click ────────────────────────────────────────────────────
   const handleNodeClick = useCallback((node: any) => {
     setSelectedNode(node);
-    graphRef.current?.centerAt(node.x, node.y, 800);
-    graphRef.current?.zoom(3.5, 800);
+    if (node && node.x !== undefined && node.y !== undefined) {
+      graphRef.current?.centerAt(node.x, node.y, 800);
+      graphRef.current?.zoom(3.5, 800);
+    }
 
     if (node) {
       setDrawerNode(node);
       setDrawerMode('view');
       setDrawerOpen(true);
+      setShowSecondaryPanel(true);
+      setSecondaryFilter('ALL');
     }
   }, []);
 
@@ -2781,56 +2867,343 @@ export default function GrafoPage() {
           onClick={closeDrawer}
         />
 
-        {/* Drawer Panel */}
+        {/* Drawer Panel (Dual View layout) */}
         <div
-          className={`fixed top-0 right-0 z-40 h-full w-full md:w-1/2 bg-[#111113]/[0.97] backdrop-blur-2xl border-l border-white/[0.08] shadow-2xl shadow-black/60 transition-all duration-300 ease-in-out transform ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          className={`fixed top-0 right-0 z-40 h-full flex flex-col md:flex-row shadow-2xl shadow-black/70 transition-all duration-300 ease-in-out transform ${
+            drawerOpen ? 'translate-x-0' : 'translate-x-full'
+          } ${
+            showSecondaryPanel && drawerNode && drawerNode.id !== 'global-create'
+              ? 'w-full lg:w-[940px] xl:w-[1020px]'
+              : 'w-full md:w-[480px] lg:w-[520px]'
+          }`}
         >
-          {drawerNode && (
-            <div className="h-full flex flex-col">
-              {/* iOS handle */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-9 h-1 rounded-full bg-white/15" />
-              </div>
-
-              {/* Drawer header */}
-              <div className="px-6 pt-3 pb-4 border-b border-white/[0.06]">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{
-                        backgroundColor: (NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill + '20',
-                        border: `1px solid ${(NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill}40`,
-                      }}
-                    >
-                      {drawerNode.type === 'FINANZA' && <DollarSign size={20} style={{ color: NODE_COLORS.FINANZA.fill }} />}
-                      {drawerNode.type === 'TAREA' && <CheckSquare size={20} style={{ color: NODE_COLORS.TAREA.fill }} />}
-                      {drawerNode.type === 'MES' && <Calendar size={20} style={{ color: NODE_COLORS.MES.fill }} />}
-                      {drawerNode.type === 'LIBRO' && <BookOpen size={20} style={{ color: NODE_COLORS.LIBRO.fill }} />}
-                      {drawerNode.type === 'CITA' && <FileText size={20} style={{ color: NODE_COLORS.CITA.fill }} />}
-                      {['EMPRESA', 'PERSONA', 'SERVICIO'].includes(drawerNode.type) && <Building2 size={20} style={{ color: (NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill }} />}
-                    </div>
-                    <div>
-                      <div className="text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5"
-                        style={{ color: (NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill }}>
-                        {drawerMode === 'create' ? `NUEVA ${createType}` : drawerNode.type}
-                      </div>
-                      <h2 className="text-[15px] font-bold text-white/90 tracking-tight leading-snug">
-                        {drawerMode === 'create' ? 'Nuevo registro' : drawerNode.name}
-                      </h2>
-                    </div>
+          {/* SECONDARY PANEL: Panel de Vínculos y Tareas Relacionadas */}
+          {showSecondaryPanel && drawerNode && drawerNode.id !== 'global-create' && (
+            <div className="w-full md:w-1/2 lg:w-[480px] bg-[#141416]/[0.98] backdrop-blur-2xl border-b md:border-b-0 md:border-r border-white/[0.08] flex flex-col h-full overflow-hidden">
+              {/* Secondary Header */}
+              <div className="px-5 pt-4 pb-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 text-violet-300 shrink-0">
+                    <Sparkles size={16} />
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {hubContextNode && (
-                      <button onClick={() => { setDrawerNode(hubContextNode); setDrawerMode('view'); setHubContextNode(null); }} className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/[0.12] transition-all">
-                        <ArrowLeft size={14} />
-                      </button>
-                    )}
-                    <button onClick={closeDrawer} className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/[0.12] transition-all">
-                      <X size={14} />
-                    </button>
+                  <div className="min-w-0">
+                    <h3 className="text-[13px] font-bold text-white/90 truncate flex items-center gap-1.5">
+                      <span>Vínculos & Tareas</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                        {linkedItems.allItems.length}
+                      </span>
+                    </h3>
+                    <p className="text-[10px] text-white/40 truncate">
+                      Asociados a <span className="text-white/70 font-semibold">"{drawerNode.name}"</span>
+                    </p>
                   </div>
                 </div>
+                <button
+                  onClick={() => setShowSecondaryPanel(false)}
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/80 transition-all shrink-0"
+                  title="Ocultar panel de vínculos"
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1 px-4 py-2 bg-white/[0.01] border-b border-white/[0.05] overflow-x-auto text-[11px]">
+                <button
+                  onClick={() => setSecondaryFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                    secondaryFilter === 'ALL'
+                      ? 'bg-white/15 text-white font-bold'
+                      : 'text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  Todos ({linkedItems.allItems.length})
+                </button>
+                <button
+                  onClick={() => setSecondaryFilter('TAREAS')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                    secondaryFilter === 'TAREAS'
+                      ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                      : 'text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  Tareas ({linkedItems.tasks.length})
+                </button>
+                <button
+                  onClick={() => setSecondaryFilter('FINANZAS')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                    secondaryFilter === 'FINANZAS'
+                      ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30'
+                      : 'text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  Finanzas ({linkedItems.finances.length})
+                </button>
+                <button
+                  onClick={() => setSecondaryFilter('ENTIDADES')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                    secondaryFilter === 'ENTIDADES'
+                      ? 'bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30'
+                      : 'text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  Entidades ({linkedItems.entities.length + linkedItems.projects.length})
+                </button>
+              </div>
+
+              {/* Items List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+                {(() => {
+                  let itemsToRender: GraphNode[] = [];
+                  if (secondaryFilter === 'ALL') itemsToRender = linkedItems.allItems;
+                  else if (secondaryFilter === 'TAREAS') itemsToRender = linkedItems.tasks;
+                  else if (secondaryFilter === 'FINANZAS') itemsToRender = linkedItems.finances;
+                  else if (secondaryFilter === 'ENTIDADES') itemsToRender = [...linkedItems.entities, ...linkedItems.projects];
+
+                  if (itemsToRender.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center h-56 p-6 text-center bg-white/[0.01] border border-dashed border-white/5 rounded-2xl my-4">
+                        <CheckSquare size={32} className="text-white/20 mb-2.5" />
+                        <p className="text-[13px] font-semibold text-white/60">No hay tareas ni elementos vinculados</p>
+                        <p className="text-[11px] text-white/35 mt-1.5 max-w-xs leading-relaxed">
+                          {secondaryFilter === 'TAREAS'
+                            ? 'No hay tareas urgentes o pendientes en este nodo.'
+                            : `Sin registros vinculados en esta sección para "${drawerNode.name}".`}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return itemsToRender.map((itemNode) => {
+                    if (itemNode.type === 'TAREA') {
+                      const isConcluida =
+                        itemNode.extra?.estado === 'CULMINADO' ||
+                        itemNode.extra?.estado === 'CULMINADA' ||
+                        itemNode.extra?.estado === 'COMPLETADA';
+                      const isSeguimiento = itemNode.extra?.estado === 'SEGUIMIENTO';
+                      const isUrgente = itemNode.extra?.urgente;
+
+                      return (
+                        <div
+                          key={itemNode.id}
+                          className={`p-3 rounded-xl border transition-all text-left flex flex-col gap-2 ${
+                            isConcluida
+                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50'
+                              : isUrgente
+                              ? 'bg-red-500/[0.06] border-red-500/25 hover:bg-red-500/[0.1]'
+                              : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <input
+                                type="checkbox"
+                                checked={isConcluida}
+                                disabled={saving}
+                                onChange={() =>
+                                  handleToggleTaskCheckbox({ id: dbId(itemNode.id), estado: itemNode.extra?.estado })
+                                }
+                                className="accent-violet-500 h-3.5 w-3.5 mt-0.5 rounded cursor-pointer shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`text-[12px] font-medium leading-snug break-words ${
+                                    isConcluida ? 'line-through text-white/30' : 'text-white/90'
+                                  }`}
+                                >
+                                  <span dangerouslySetInnerHTML={{ __html: renderFormattedText(itemNode.name) }} />
+                                </p>
+
+                                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                  {itemNode.extra?.proyecto && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 font-semibold border border-violet-500/20">
+                                      {itemNode.extra.proyecto}
+                                    </span>
+                                  )}
+                                  {isUrgente && !isConcluida && (
+                                    <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md text-red-400 bg-red-500/15 border border-red-500/20 animate-pulse">
+                                      🔥 URGENTE
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${
+                                      isConcluida
+                                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                                        : isSeguimiento
+                                        ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
+                                        : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                                    }`}
+                                  >
+                                    {itemNode.extra?.estado || 'PENDIENTE'}
+                                  </span>
+                                  {itemNode.extra?.fecha_limite && (
+                                    <span className="text-[9px] text-white/40 flex items-center gap-1">
+                                      📅 {formatDate(itemNode.extra.fecha_limite)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleNodeClick(itemNode)}
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
+                              title="Ver nodo en el grafo"
+                            >
+                              <ExternalLink size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (itemNode.type === 'FINANZA') {
+                      const isPaid = itemNode.extra?.estado_pago === 'PAGADO' || itemNode.extra?.estado_pago === 'COBRADO';
+
+                      return (
+                        <div
+                          key={itemNode.id}
+                          className={`p-3 rounded-xl border transition-all text-left flex items-start justify-between gap-3 ${
+                            isPaid
+                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50'
+                              : 'bg-emerald-500/[0.04] border-emerald-500/20 hover:bg-emerald-500/[0.08]'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[13px] font-bold text-emerald-300">
+                                {formatGs(itemNode.extra?.monto || 0)}
+                              </span>
+                              <span
+                                className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${
+                                  isPaid
+                                    ? 'text-gray-400 bg-gray-500/10 border-gray-500/20'
+                                    : 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
+                                }`}
+                              >
+                                {itemNode.extra?.estado_pago || 'PENDIENTE'}
+                              </span>
+                            </div>
+                            <p className="text-[12px] font-medium text-white/80 leading-snug break-words">
+                              {itemNode.name}
+                            </p>
+                            {itemNode.extra?.proyecto && (
+                              <p className="text-[9px] text-violet-300/80 font-medium mt-1">
+                                Proyecto: {itemNode.extra.proyecto}
+                              </p>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handleNodeClick(itemNode)}
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
+                            title="Ver nodo en el grafo"
+                          >
+                            <ExternalLink size={13} />
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // Entity, Project, Link or Book
+                    const colors = NODE_COLORS[itemNode.type] || NODE_COLORS.DEFAULT;
+                    return (
+                      <div
+                        key={itemNode.id}
+                        className="p-3 rounded-xl border bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] transition-all text-left flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-bold"
+                            style={{
+                              backgroundColor: colors.fill + '25',
+                              color: colors.text,
+                              border: `1px solid ${colors.fill}40`,
+                            }}
+                          >
+                            {itemNode.type.slice(0, 3)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-bold text-white/90 truncate">{itemNode.name}</p>
+                            <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: colors.text }}>
+                              {itemNode.type}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleNodeClick(itemNode)}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
+                          title="Ver nodo en el grafo"
+                        >
+                          <ExternalLink size={13} />
+                        </button>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* MAIN DRAWER PANEL */}
+          <div className="flex-1 bg-[#111113]/[0.98] backdrop-blur-2xl flex flex-col h-full overflow-hidden">
+            {drawerNode && (
+              <div className="h-full flex flex-col">
+                {/* iOS handle */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-9 h-1 rounded-full bg-white/15" />
+                </div>
+
+                {/* Drawer header */}
+                <div className="px-6 pt-3 pb-4 border-b border-white/[0.06]">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{
+                          backgroundColor: (NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill + '20',
+                          border: `1px solid ${(NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill}40`,
+                        }}
+                      >
+                        {drawerNode.type === 'FINANZA' && <DollarSign size={20} style={{ color: NODE_COLORS.FINANZA.fill }} />}
+                        {drawerNode.type === 'TAREA' && <CheckSquare size={20} style={{ color: NODE_COLORS.TAREA.fill }} />}
+                        {drawerNode.type === 'MES' && <Calendar size={20} style={{ color: NODE_COLORS.MES.fill }} />}
+                        {drawerNode.type === 'LIBRO' && <BookOpen size={20} style={{ color: NODE_COLORS.LIBRO.fill }} />}
+                        {drawerNode.type === 'CITA' && <FileText size={20} style={{ color: NODE_COLORS.CITA.fill }} />}
+                        {['EMPRESA', 'PERSONA', 'SERVICIO'].includes(drawerNode.type) && <Building2 size={20} style={{ color: (NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill }} />}
+                      </div>
+                      <div>
+                        <div className="text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5"
+                          style={{ color: (NODE_COLORS[drawerNode.type] || NODE_COLORS.DEFAULT).fill }}>
+                          {drawerMode === 'create' ? `NUEVA ${createType}` : drawerNode.type}
+                        </div>
+                        <h2 className="text-[15px] font-bold text-white/90 tracking-tight leading-snug">
+                          {drawerMode === 'create' ? 'Nuevo registro' : drawerNode.name}
+                        </h2>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {!showSecondaryPanel && drawerNode && drawerNode.id !== 'global-create' && (
+                        <button
+                          onClick={() => setShowSecondaryPanel(true)}
+                          className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 border border-violet-500/30 transition-all shrink-0 mr-1"
+                          title="Mostrar panel de vínculos"
+                        >
+                          <Sparkles size={12} />
+                          <span>Vínculos ({linkedItems.allItems.length})</span>
+                        </button>
+                      )}
+                      {hubContextNode && (
+                        <button onClick={() => { setDrawerNode(hubContextNode); setDrawerMode('view'); setHubContextNode(null); }} className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/[0.12] transition-all">
+                          <ArrowLeft size={14} />
+                        </button>
+                      )}
+                      <button onClick={closeDrawer} className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/[0.12] transition-all">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
 
                 {/* Mode toggle buttons */}
                 {drawerNode.type !== 'MES' && drawerMode !== 'create' && (
@@ -5893,6 +6266,7 @@ export default function GrafoPage() {
           )}
         </div>
       </div>
+    </div>
 
       {/* Drawer input styles */}
       <style jsx global>{`
