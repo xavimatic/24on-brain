@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model finanzas {
+  id                Int        @id @default(autoincrement())
+  proyecto_id       Int?
+  entidad_id        Int?
+  tipo              String     @db.VarChar(50)
+  monto             Decimal    @db.Decimal(15, 2)
+  descripcion       String
+  estado_pago       String?    @default("pendiente") @db.VarChar(50)
+  saldo_pendiente   Decimal?   @default(0.00) @db.Decimal(15, 2)
+  fecha_vencimiento DateTime?  @db.Timestamp(6)
+  fecha_transaccion DateTime?  @default(now()) @db.Timestamp(6)
+  recurrente        Boolean    @default(false)
+  frecuencia        String?    @db.VarChar(20)
+  dia_vencimiento   Int?
+  mes_vencimiento   Int?
+  cuota_actual      Int?
+  cuotas_total      Int?
+  proyectos         proyectos? @relation(fields: [proyecto_id], references: [id], onUpdate: NoAction)
+  entidades         Entidades? @relation("FinanzaEntidad", fields: [entidad_id], references: [id], onDelete: SetNull)
+  tareas            tareas[]
+  entidad_origen_id Int?
+  entidad_origen    Entidades? @relation("FinanzaOrigen", fields: [entidad_origen_id], references: [id], onDelete: SetNull)
+}
+
+model proyectos {
+  id             Int        @id @default(autoincrement())
+  nombre         String     @unique @db.VarChar(100)
+  descripcion    String?
+  metadatos      Json?
+  fecha_creacion DateTime?  @default(now()) @db.Timestamp(6)
+  finanzas       finanzas[]
+  tareas         tareas[]
+  enlaces        enlaces[]
+  entidad_id     Int?
+  entidades      Entidades? @relation(fields: [entidad_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  fecha_inicio   DateTime?
+  fecha_fin      DateTime?
+  estado         String     @default("ACTIVO") @db.VarChar(50)
+  notas          String?    @db.Text
+  is_destacado   Boolean    @default(false)
+}
+
+model Entidades {
+  id               Int         @id @default(autoincrement())
+  nombre           String      @unique
+  tipo             String
+  metadatos        Json?
+  entidad_padre_id Int?
+  entidad_padre    Entidades?  @relation("EntidadJerarquia", fields: [entidad_padre_id], references: [id], onDelete: SetNull)
+  entidades_hijas  Entidades[] @relation("EntidadJerarquia")
+  proyectos        proyectos[]
+  vinculos_de       Vinculos[] @relation("Origen")
+  vinculos_hacia    Vinculos[] @relation("Destino")
+  enlaces          enlaces[]
+  finanzas_origen  finanzas[] @relation("FinanzaOrigen")
+  finanzas_directas finanzas[] @relation("FinanzaEntidad")
+  is_destacado     Boolean    @default(false)
+}
+
+model Vinculos {
+  id         Int       @id @default(autoincrement())
+  tipo       String    
+  origen_id  Int
+  destino_id Int
+  origen     Entidades @relation("Origen", fields: [origen_id], references: [id], onDelete: Cascade)
+  destino    Entidades @relation("Destino", fields: [destino_id], references: [id], onDelete: Cascade)
+}
+
+model tareas {
+  id                  Int        @id @default(autoincrement())
+  proyecto_id         Int?
+  finanza_id          Int?
+  descripcion         String
+  notas               String?    @db.Text
+  estado              String?    @default("PENDIENTE") @db.VarChar(50)
+  prioridad           String?    @default("media") @db.VarChar(20)
+  fecha_limite        DateTime?  @db.Timestamp(6)
+  fecha_creacion      DateTime?  @default(now()) @db.Timestamp(6)
+  fecha_actualizacion DateTime?  @default(now()) @db.Timestamp(6)
+  urgente             Boolean    @default(false)
+  proyectos           proyectos? @relation(fields: [proyecto_id], references: [id], onUpdate: NoAction)
+  finanzas            finanzas?  @relation(fields: [finanza_id], references: [id], onDelete: Cascade)
+}
+
+model enlaces {
+  id          Int        @id @default(autoincrement())
+  url         String
+  descripcion String
+  categoria   String     @db.VarChar(50)
+  etiquetas   String[]
+  funciona    Boolean    @default(true)
+  creado_en   DateTime   @default(now()) @db.Timestamp(6)
+  proyecto_id Int?
+  entidad_id  Int?
+  proyectos   proyectos? @relation(fields: [proyecto_id], references: [id], onUpdate: NoAction)
+  entidades   Entidades? @relation(fields: [entidad_id], references: [id], onDelete: SetNull)
+}
+
+model Libros {
+  id               Int       @id @default(autoincrement())
+  titulo           String    @unique
+  autor            String?
+  estado_lectura   String    // "PENDIENTE", "LEYENDO", "LEIDO"
+  veces_leido      Int       @default(0)
+  url_pdf          String?   // Ruta para el archivo PDF si se sube al servidor/storage
+  creado_en        DateTime  @default(now())
+  tipo_media       String    @default("LIBRO") // "LIBRO", "PELICULA", "SERIE"
+  citas            Citas[]
+}
+
+model Citas {
+  id         Int     @id @default(autoincrement())
+  libro_id   Int
+  texto      String  // La cita literal o fragmento importante del libro físico/PDF
+  pagina     Int?    // Número de página de referencia
+  comentario String? // Reflexión personal o notas del usuario sobre la cita
+  libro      Libros  @relation(fields: [libro_id], references: [id], onDelete: Cascade)
+}
