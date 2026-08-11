@@ -2339,26 +2339,26 @@ export default function GrafoPage() {
       // ─ Label below circle ─
       let textWidth = 0;
       let fontSize = 0;
-      const shouldShowLabel = showLabels && globalScale >= 0.8 && (!ocultarYMostrarEnHover || isHovered || isSelected || !showLabels);
+      const shouldShowLabel = showLabels && (isHovered || isSelected || globalScale >= 0.8) && (!ocultarYMostrarEnHover || isHovered || isSelected);
       if (shouldShowLabel) {
         const displayLabel = label.length > 20 ? label.slice(0, 20) + '…' : label;
         fontSize = Math.max(labelSize / globalScale, 1.8);
-        ctx.font = `500 ${fontSize}px "Inter", -apple-system, sans-serif`;
+        ctx.font = `${isHovered || isSelected ? '700' : '500'} ${fontSize}px "Inter", -apple-system, sans-serif`;
         ctx.letterSpacing = `${Math.max(0.5 / globalScale, 0.15)}px`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
 
         // Dark text-shadow / halo for readability against graph background
-        ctx.fillStyle = isDarkMode ? 'rgba(10, 10, 12, 0.7)' : 'rgba(255, 255, 255, 0.8)';
-        ctx.globalAlpha = isDimmed ? 0.05 : 0.7;
+        ctx.fillStyle = isDarkMode ? 'rgba(10, 10, 12, 0.85)' : 'rgba(255, 255, 255, 0.9)';
+        ctx.globalAlpha = isDimmed ? 0.05 : 0.8;
         ctx.fillText(displayLabel, node.x + 0.8, node.y + r + 10 + 0.8);
         ctx.fillText(displayLabel, node.x - 0.8, node.y + r + 10 - 0.8);
         ctx.fillText(displayLabel, node.x + 1.2, node.y + r + 10);
         ctx.fillText(displayLabel, node.x - 1.2, node.y + r + 10);
 
-        // Foreground label
-        ctx.fillStyle = isDarkMode ? (isSelected ? '#ffffff' : colors.text) : (isSelected ? '#1d1d1f' : colors.text);
-        ctx.globalAlpha = isDimmed ? 0.12 : 0.9;
+        // Foreground label (bright white on hover/selected)
+        ctx.fillStyle = isHovered || isSelected ? '#ffffff' : (isDarkMode ? colors.text : '#1d1d1f');
+        ctx.globalAlpha = isDimmed ? 0.12 : (isHovered || isSelected ? 1 : 0.9);
         ctx.fillText(displayLabel, node.x, node.y + r + 10);
         textWidth = ctx.measureText(displayLabel).width;
       }
@@ -2563,10 +2563,33 @@ export default function GrafoPage() {
             graphData={filteredData}
             nodeId="id"
             nodeCanvasObject={paintNode}
-            nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
-              const [w, h] = node.__bckgDimensions || [20, 20];
+            nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
+              let baseRadius = NODE_RADIUS[node.type] || NODE_RADIUS.DEFAULT;
+              if (node.extra?.is_destacado === true) baseRadius *= 1.8;
+              const r = Math.max(baseRadius / Math.max(globalScale * 0.15, 0.6), 6);
+              const hitRadius = r + 6;
+
+              // Circle hit area
               ctx.fillStyle = color;
-              ctx.fillRect(node.x - w / 2, node.y - h / 2, w, h);
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, hitRadius, 0, 2 * Math.PI);
+              ctx.fill();
+
+              // Label hit area below
+              const label = node.name || '';
+              if (label) {
+                const fontSize = Math.max(labelSize / globalScale, 2);
+                ctx.font = `500 ${fontSize}px "Inter", sans-serif`;
+                const displayLabel = label.length > 20 ? label.slice(0, 20) + '…' : label;
+                const textWidth = ctx.measureText(displayLabel).width;
+                const pad = 6;
+                ctx.fillRect(
+                  node.x - textWidth / 2 - pad,
+                  node.y + r + 4,
+                  textWidth + pad * 2,
+                  fontSize + 10
+                );
+              }
             }}
             linkCanvasObject={paintLink}
             onNodeClick={handleNodeClick}
@@ -2594,7 +2617,7 @@ export default function GrafoPage() {
         {!showSettings && (
           <button
             onClick={() => setShowSettings(true)}
-            className={`absolute top-5 left-5 z-20 w-9 h-9 rounded-xl ${isDarkMode ? 'bg-[#2d2d2e]/70 hover:bg-[#3a3a3c]/70 border-white/[0.08] text-white/60 hover:text-white/90' : 'bg-white/75 hover:bg-white/90 border-black/[0.06] text-[#1d1d1f]/50 hover:text-[#1d1d1f]'} backdrop-blur-md border flex items-center justify-center shadow-lg hover:shadow-xl transition-all`}
+            className={`absolute top-5 left-5 z-20 w-9 h-9 rounded-xl ${isDarkMode ? 'bg-[#2d2d2e]/70 hover:bg-[#3a3a3c]/70 border-white/[0.08] text-white/60 hover:text-white/90' : 'bg-white/75 hover:bg-white/90 border-black/[0.06] text-[#1d1d1f]/50 hover:text-[#1d1d1f]'} backdrop-blur-md border flex items-center justify-center shadow-lg hover:shadow-xl transition-all pointer-events-auto`}
             title="Ajustes y Filtros"
           >
             <Sliders size={15} />
@@ -2603,7 +2626,7 @@ export default function GrafoPage() {
 
         {/* ── Standalone Stats (when no selection and settings closed) ── */}
         {filteredData && !selectedNode && !showSettings && (
-          <div className="absolute top-5 right-18 z-10 bg-[#111113]/90 backdrop-blur-xl border border-white/[0.06] rounded-xl p-4">
+          <div className="absolute top-5 right-18 z-10 bg-[#111113]/90 backdrop-blur-xl border border-white/[0.06] rounded-xl p-4 pointer-events-auto">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30 mb-3">Estadísticas</p>
             <div className="space-y-2">
               {Object.entries(getStats()).map(([type, count]) => (
@@ -2627,7 +2650,7 @@ export default function GrafoPage() {
         {/* ── Selected Node Panel (entities only) ────────────────────── */}
         {selectedNode && !drawerOpen && (
           <div 
-            className={`absolute top-5 right-5 z-10 ${isDarkMode ? 'bg-[#2d2d2e]/70 border-white/10 text-white' : 'bg-white/75 border-black/5 text-[#1d1d1f]'} backdrop-blur-md border rounded-2xl p-5 w-72 animate-fade-in shadow-2xl ${isDarkMode ? 'shadow-black/40' : 'shadow-black/10'} transition-all duration-300`}
+            className={`absolute top-5 right-5 z-10 ${isDarkMode ? 'bg-[#2d2d2e]/70 border-white/10 text-white' : 'bg-white/75 border-black/5 text-[#1d1d1f]'} backdrop-blur-md border rounded-2xl p-5 w-72 animate-fade-in shadow-2xl ${isDarkMode ? 'shadow-black/40' : 'shadow-black/10'} transition-all duration-300 pointer-events-auto`}
           >
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -2685,7 +2708,7 @@ export default function GrafoPage() {
 
         {/* ── Obsidian Settings Panel ────────────────────────────────── */}
         {showSettings && filteredData && (
-          <div className={`absolute top-5 left-5 z-20 w-80 ${isDarkMode ? 'bg-[#2d2d2e]/80 border-white/10 text-white/80' : 'bg-white/85 border-black/5 text-[#1d1d1f]/80'} backdrop-blur-md border rounded-2xl p-5 shadow-2xl max-h-[85vh] overflow-y-auto animate-fade-in text-[12px] space-y-5 transition-colors duration-500`}>
+          <div className={`absolute top-5 left-5 z-20 w-80 ${isDarkMode ? 'bg-[#2d2d2e]/80 border-white/10 text-white/80' : 'bg-white/85 border-black/5 text-[#1d1d1f]/80'} backdrop-blur-md border rounded-2xl p-5 shadow-2xl max-h-[85vh] overflow-y-auto animate-fade-in text-[12px] space-y-5 transition-colors duration-500 pointer-events-auto`}>
             {/* Header */}
             <div className={`flex items-center justify-between ${isDarkMode ? 'border-white/[0.06]' : 'border-black/[0.06]'} pb-3 border-b`}>
               <div className={`flex items-center gap-2 ${isDarkMode ? 'text-white/90' : 'text-[#1d1d1f]'}`}>
@@ -2863,13 +2886,12 @@ export default function GrafoPage() {
 
         {/* Backdrop */}
         <div
-          className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-          onClick={closeDrawer}
+          className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-none ${drawerOpen ? 'opacity-100' : 'opacity-0'}`}
         />
 
         {/* Drawer Panel (Dual View layout) */}
         <div
-          className={`fixed top-0 right-0 z-40 h-full flex flex-col md:flex-row shadow-2xl shadow-black/70 transition-all duration-300 ease-in-out transform ${
+          className={`fixed top-0 right-0 z-40 h-full flex flex-col md:flex-row shadow-2xl shadow-black/70 transition-all duration-300 ease-in-out transform pointer-events-none ${
             drawerOpen ? 'translate-x-0' : 'translate-x-full'
           } ${
             showSecondaryPanel && drawerNode && drawerNode.id !== 'global-create'
@@ -2879,7 +2901,7 @@ export default function GrafoPage() {
         >
           {/* SECONDARY PANEL: Panel de Vínculos y Tareas Relacionadas */}
           {showSecondaryPanel && drawerNode && drawerNode.id !== 'global-create' && (
-            <div className="w-full md:w-1/2 lg:w-[480px] bg-[#141416]/[0.98] backdrop-blur-2xl border-b md:border-b-0 md:border-r border-white/[0.08] flex flex-col h-full overflow-hidden">
+            <div className="w-full md:w-1/2 lg:w-[480px] bg-[#141416]/[0.98] backdrop-blur-2xl border-b md:border-b-0 md:border-r border-white/[0.08] flex flex-col h-full overflow-hidden pointer-events-auto">
               {/* Secondary Header */}
               <div className="px-5 pt-4 pb-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -3147,7 +3169,7 @@ export default function GrafoPage() {
           )}
 
           {/* MAIN DRAWER PANEL */}
-          <div className="flex-1 bg-[#111113]/[0.98] backdrop-blur-2xl flex flex-col h-full overflow-hidden">
+          <div className="flex-1 bg-[#111113]/[0.98] backdrop-blur-2xl flex flex-col h-full overflow-hidden pointer-events-auto">
             {drawerNode && (
               <div className="h-full flex flex-col">
                 {/* iOS handle */}
