@@ -308,6 +308,24 @@ export async function obtenerGrafo() {
     }
   }
 
+  // ── Hub de Tareas Urgentes ──────────────────────────────────────
+  const urgentTasks = tareasRows.filter((t: any) => t.urgente === true || (t.prioridad || '').toLowerCase() === 'alta' || (t.estado && t.estado !== 'CULMINADO'));
+  if (urgentTasks.length > 0 || tareasRows.length > 0) {
+    nodes.push({
+      id: 'hub-urgentes-tareas',
+      name: '🔥 URGENTES TAREAS',
+      type: 'HUB_TAREAS',
+      extra: { total_urgentes: urgentTasks.length },
+    });
+    for (const t of urgentTasks) {
+      links.push({
+        source: 'hub-urgentes-tareas',
+        target: `tar-${t.id}`,
+        type: 'HUB_TAREAS',
+      });
+    }
+  }
+
   // ── Nodos & Links de Libros & Citas ────────────────────────────
   for (const b of librosRows) {
     const bookNodeId = `lib-${b.id}`;

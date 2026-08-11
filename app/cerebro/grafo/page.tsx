@@ -155,6 +155,11 @@ const NODE_COLORS: Record<string, { fill: string; text: string; glow: string }> 
     text: '#6ee7b7',
     glow: 'rgba(16, 185, 129, 0.60)',
   },
+  HUB_TAREAS: {
+    fill: '#f59e0b',
+    text: '#fcd34d',
+    glow: 'rgba(245, 158, 11, 0.60)',
+  },
   LINKS: {
     fill: '#0ea5e9',
     text: '#7dd3fc',
@@ -185,6 +190,7 @@ const LINK_COLORS: Record<string, string> = {
   PROYECTO_DE: '#a855f7',
   HIJO_DE: '#6366f1',
   HUB_FINANZAS: '#10b981',
+  HUB_TAREAS: '#f59e0b',
   DEFAULT: '#334155',
 };
 
@@ -205,6 +211,7 @@ const NODE_RADIUS: Record<string, number> = {
   CITA: 3,
   PROYECTO: 4.2,
   HUB_FINANZAS: 5.5,
+  HUB_TAREAS: 5.5,
   LINKS: 5,
   DEFAULT: 3,
 };
@@ -357,7 +364,9 @@ export default function GrafoPage() {
 
     const nodeNameLower = (node.name || '').toLowerCase();
     const isUrgentesHub =
+      node.id === 'hub-urgentes-tareas' ||
       node.id === 'proj-urgentes' ||
+      node.type === 'HUB_TAREAS' ||
       nodeNameLower.includes('urgente') ||
       (node.type === 'PROYECTO' && nodeNameLower.includes('tarea'));
 
@@ -372,7 +381,8 @@ export default function GrafoPage() {
         if (n.type !== 'TAREA') return false;
         if (n.extra?.urgente) return true;
         if (connectedNodeIds.has(n.id)) return true;
-        if (node.type === 'PROYECTO' && dbId(node.id) === n.extra?.proyecto_id) return true;
+        if ((n.extra?.prioridad || '').toLowerCase() === 'alta') return true;
+        if (n.extra?.estado === 'PENDIENTE') return true;
         return false;
       });
     } else if (node.type === 'PROYECTO') {
@@ -391,8 +401,11 @@ export default function GrafoPage() {
       tasks = data.nodes.filter((n) => n.type === 'TAREA' && connectedNodeIds.has(n.id));
       finances = data.nodes.filter((n) => n.type === 'FINANZA' && connectedNodeIds.has(n.id));
       links = data.nodes.filter((n) => (n.type === 'LIBRO' || n.type === 'PELICULA' || n.type === 'SERIE') && connectedNodeIds.has(n.id));
-    } else if (node.type === 'HUB_FINANZAS') {
+    } else if (node.type === 'HUB_FINANZAS' || node.id === 'hub_finanzas') {
       finances = data.nodes.filter((n) => n.type === 'FINANZA');
+      entities = data.nodes.filter((n) => ['EMPRESA', 'PERSONA', 'SERVICIO'].includes(n.type) && connectedNodeIds.has(n.id));
+    } else if (node.type === 'LINKS' || node.id === 'links-hub') {
+      links = data.nodes.filter((n) => n.type === 'LINKS' || n.type === 'CITA' || n.type === 'LIBRO');
     } else {
       tasks = data.nodes.filter((n) => n.type === 'TAREA' && connectedNodeIds.has(n.id) && n.id !== node.id);
       finances = data.nodes.filter((n) => n.type === 'FINANZA' && connectedNodeIds.has(n.id) && n.id !== node.id);
@@ -2566,8 +2579,10 @@ export default function GrafoPage() {
             nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
               let baseRadius = NODE_RADIUS[node.type] || NODE_RADIUS.DEFAULT;
               if (node.extra?.is_destacado === true) baseRadius *= 1.8;
+              const isHub = node.type?.startsWith('HUB_') || node.type === 'LINKS' || node.id?.includes('hub');
+              if (isHub) baseRadius *= 1.4;
               const r = Math.max(baseRadius / Math.max(globalScale * 0.15, 0.6), 6);
-              const hitRadius = r + 6;
+              const hitRadius = r + (isHub ? 12 : 8);
 
               // Circle hit area
               ctx.fillStyle = color;
@@ -2582,12 +2597,12 @@ export default function GrafoPage() {
                 ctx.font = `500 ${fontSize}px "Inter", sans-serif`;
                 const displayLabel = label.length > 20 ? label.slice(0, 20) + '…' : label;
                 const textWidth = ctx.measureText(displayLabel).width;
-                const pad = 6;
+                const pad = isHub ? 10 : 6;
                 ctx.fillRect(
                   node.x - textWidth / 2 - pad,
                   node.y + r + 4,
                   textWidth + pad * 2,
-                  fontSize + 10
+                  fontSize + 12
                 );
               }
             }}
@@ -3259,6 +3274,68 @@ export default function GrafoPage() {
                 {/* ═══════ VIEW MODE ═══════ */}
                 {drawerMode === 'view' && (
                   <>
+                    {/* HUB_TAREAS view */}
+                    {(drawerNode.type === 'HUB_TAREAS' || drawerNode.id === 'hub-urgentes-tareas') && (
+                      <div className="bg-gradient-to-br from-amber-500/15 to-orange-600/10 border border-amber-500/30 rounded-2xl p-5 shadow-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-amber-400/80 uppercase tracking-wider font-bold">Nodo Hub / Agrupador Maestro</p>
+                          <span className="text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                            HUB URGENTES
+                          </span>
+                        </div>
+                        <h3 className="text-[18px] font-bold text-amber-200 tracking-tight flex items-center gap-2">
+                          <span>🔥</span> Tareas Urgentes y Pendientes
+                        </h3>
+                        <p className="text-[12px] text-amber-100/70 mt-1.5 leading-relaxed">
+                          Concentra todas las tareas marcadas como urgentes, de alta prioridad o pendientes en tu ecosistema relacional.
+                        </p>
+                        <div className="mt-4 pt-3 border-t border-amber-500/20 flex items-center justify-between text-[11px] text-amber-300/80">
+                          <span>Ítems vinculados:</span>
+                          <span className="font-bold text-amber-200">{linkedItems.tasks.length} tareas</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* HUB_FINANZAS view */}
+                    {(drawerNode.type === 'HUB_FINANZAS' || drawerNode.id === 'hub_finanzas') && (
+                      <div className="bg-gradient-to-br from-emerald-500/15 to-teal-600/10 border border-emerald-500/30 rounded-2xl p-5 shadow-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-emerald-400/80 uppercase tracking-wider font-bold">Nodo Hub / Tesorería</p>
+                          <span className="text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            HUB TESORERÍA
+                          </span>
+                        </div>
+                        <h3 className="text-[18px] font-bold text-emerald-200 tracking-tight flex items-center gap-2">
+                          <span>💳</span> Finanzas y Tesorería
+                        </h3>
+                        <p className="text-[12px] text-emerald-100/70 mt-1.5 leading-relaxed">
+                          Concentra todos los cobros, pagos, saldos y movimientos financieros clasificados por unidad originadora.
+                        </p>
+                        <div className="mt-4 pt-3 border-t border-emerald-500/20 flex items-center justify-between text-[11px] text-emerald-300/80">
+                          <span>Movimientos registrados:</span>
+                          <span className="font-bold text-emerald-200">{linkedItems.finances.length} registros</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LINKS view */}
+                    {(drawerNode.type === 'LINKS' || drawerNode.id === 'links-hub') && (
+                      <div className="bg-gradient-to-br from-sky-500/15 to-blue-600/10 border border-sky-500/30 rounded-2xl p-5 shadow-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-sky-400/80 uppercase tracking-wider font-bold">Nodo Hub / Recursos</p>
+                          <span className="text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                            HUB LINKS
+                          </span>
+                        </div>
+                        <h3 className="text-[18px] font-bold text-sky-200 tracking-tight flex items-center gap-2">
+                          <span>🔗</span> Enlaces, Documentación y Recursos
+                        </h3>
+                        <p className="text-[12px] text-sky-100/70 mt-1.5 leading-relaxed">
+                          Consolida repositorios, URLs, accesos rápidos y documentación técnica vinculada al ecosistema.
+                        </p>
+                      </div>
+                    )}
+
                     {/* FINANZA view */}
                     {drawerNode.type === 'FINANZA' && drawerNode.extra && (
                       <>
