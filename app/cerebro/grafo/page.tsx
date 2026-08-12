@@ -350,6 +350,7 @@ export default function GrafoPage() {
   // Dual View & Secondary Panel states
   const [showSecondaryPanel, setShowSecondaryPanel] = useState(true);
   const [secondaryFilter, setSecondaryFilter] = useState<'ALL' | 'TAREAS' | 'FINANZAS' | 'ENTIDADES'>('ALL');
+  const [hubContextNode, setHubContextNode] = useState<GraphNode | null>(null);
 
   const getLinkedItemsForNode = useCallback((node: GraphNode | null) => {
     if (!node || !data) return { tasks: [], finances: [], entities: [], projects: [], links: [], allItems: [] };
@@ -431,9 +432,10 @@ export default function GrafoPage() {
     };
   }, [data]);
 
+  const secondarySourceNode = hubContextNode || drawerNode;
   const linkedItems = useMemo(() => {
-    return getLinkedItemsForNode(drawerNode);
-  }, [drawerNode, getLinkedItemsForNode]);
+    return getLinkedItemsForNode(secondarySourceNode);
+  }, [secondarySourceNode, getLinkedItemsForNode]);
 
   // Edit form state
   const [editDesc, setEditDesc] = useState('');
@@ -462,7 +464,6 @@ export default function GrafoPage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<'ia' | 'proyectos' | 'tareas' | 'finanzas' | 'enlaces'>('ia');
   const [activeFinanzaTab, setActiveFinanzaTab] = useState<'pending_in' | 'pending_out' | 'completed_in' | 'completed_out'>('pending_in');
-  const [hubContextNode, setHubContextNode] = useState<GraphNode | null>(null);
 
   // Inline task editing
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
@@ -1143,6 +1144,34 @@ export default function GrafoPage() {
     setCreateProyectoId('');
   }, []);
 
+  // ── Node click from secondary panel list (maintains hub/project context) ──
+  const handleSelectSecondaryItem = useCallback((itemNode: GraphNode) => {
+    const parentToKeep = hubContextNode || (
+      drawerNode && (
+        drawerNode.type === 'HUB_TAREAS' ||
+        drawerNode.type === 'HUB_FINANZAS' ||
+        drawerNode.type === 'LINKS' ||
+        drawerNode.type === 'PROYECTO' ||
+        drawerNode.id?.includes('hub')
+      ) ? drawerNode : null
+    );
+
+    if (parentToKeep && parentToKeep.id !== itemNode.id) {
+      setHubContextNode(parentToKeep);
+    } else if (parentToKeep && parentToKeep.id === itemNode.id) {
+      setHubContextNode(null);
+    }
+
+    setSelectedNode(itemNode);
+    setDrawerNode(itemNode);
+    setDrawerMode('view');
+
+    if (itemNode.x !== undefined && itemNode.y !== undefined) {
+      graphRef.current?.centerAt(itemNode.x, itemNode.y, 800);
+      graphRef.current?.zoom(3.5, 800);
+    }
+  }, [drawerNode, hubContextNode]);
+
   // ── Node click ────────────────────────────────────────────────────
   const handleNodeClick = useCallback((node: any) => {
     setSelectedNode(node);
@@ -1152,6 +1181,7 @@ export default function GrafoPage() {
     }
 
     if (node) {
+      setHubContextNode(null);
       setDrawerNode(node);
       setDrawerMode('view');
       setDrawerOpen(true);
@@ -3012,6 +3042,8 @@ export default function GrafoPage() {
                   }
 
                   return itemsToRender.map((itemNode) => {
+                    const isActive = itemNode.id === drawerNode?.id;
+
                     if (itemNode.type === 'TAREA') {
                       const isConcluida =
                         itemNode.extra?.estado === 'CULMINADO' ||
@@ -3023,12 +3055,15 @@ export default function GrafoPage() {
                       return (
                         <div
                           key={itemNode.id}
-                          className={`p-3 rounded-xl border transition-all text-left flex flex-col gap-2 ${
-                            isConcluida
-                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50'
+                          onClick={() => handleSelectSecondaryItem(itemNode)}
+                          className={`p-3 rounded-xl border transition-all text-left flex flex-col gap-2 cursor-pointer ${
+                            isActive
+                              ? 'bg-violet-500/15 border-violet-500/40 ring-1 ring-violet-500/40 shadow-lg shadow-violet-500/10'
+                              : isConcluida
+                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50 hover:opacity-80'
                               : isUrgente
-                              ? 'bg-red-500/[0.06] border-red-500/25 hover:bg-red-500/[0.1]'
-                              : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]'
+                              ? 'bg-red-500/[0.06] border-red-500/25 hover:bg-red-500/[0.12]'
+                              : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.08]'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2.5">
@@ -3037,6 +3072,7 @@ export default function GrafoPage() {
                                 type="checkbox"
                                 checked={isConcluida}
                                 disabled={saving}
+                                onClick={(e) => e.stopPropagation()}
                                 onChange={() =>
                                   handleToggleTaskCheckbox({ id: dbId(itemNode.id), estado: itemNode.extra?.estado })
                                 }
@@ -3052,6 +3088,11 @@ export default function GrafoPage() {
                                 </p>
 
                                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                  {isActive && (
+                                    <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-violet-300 bg-violet-500/20 border border-violet-500/30">
+                                      Abierto
+                                    </span>
+                                  )}
                                   {itemNode.extra?.proyecto && (
                                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 font-semibold border border-violet-500/20">
                                       {itemNode.extra.proyecto}
@@ -3083,9 +3124,12 @@ export default function GrafoPage() {
                             </div>
 
                             <button
-                              onClick={() => handleNodeClick(itemNode)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNodeClick(itemNode);
+                              }}
                               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
-                              title="Ver nodo en el grafo"
+                              title="Centrar en el grafo"
                             >
                               <ExternalLink size={13} />
                             </button>
@@ -3100,9 +3144,12 @@ export default function GrafoPage() {
                       return (
                         <div
                           key={itemNode.id}
-                          className={`p-3 rounded-xl border transition-all text-left flex items-start justify-between gap-3 ${
-                            isPaid
-                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50'
+                          onClick={() => handleSelectSecondaryItem(itemNode)}
+                          className={`p-3 rounded-xl border transition-all text-left flex items-start justify-between gap-3 cursor-pointer ${
+                            isActive
+                              ? 'bg-emerald-500/15 border-emerald-500/40 ring-1 ring-emerald-500/40 shadow-lg shadow-emerald-500/10'
+                              : isPaid
+                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50 hover:opacity-80'
                               : 'bg-emerald-500/[0.04] border-emerald-500/20 hover:bg-emerald-500/[0.08]'
                           }`}
                         >
@@ -3111,6 +3158,11 @@ export default function GrafoPage() {
                               <span className="text-[13px] font-bold text-emerald-300">
                                 {formatGs(itemNode.extra?.monto || 0)}
                               </span>
+                              {isActive && (
+                                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-emerald-300 bg-emerald-500/20 border border-emerald-500/30">
+                                  Abierto
+                                </span>
+                              )}
                               <span
                                 className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${
                                   isPaid
@@ -3132,9 +3184,12 @@ export default function GrafoPage() {
                           </div>
 
                           <button
-                            onClick={() => handleNodeClick(itemNode)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleNodeClick(itemNode);
+                            }}
                             className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
-                            title="Ver nodo en el grafo"
+                            title="Centrar en el grafo"
                           >
                             <ExternalLink size={13} />
                           </button>
@@ -3147,7 +3202,12 @@ export default function GrafoPage() {
                     return (
                       <div
                         key={itemNode.id}
-                        className="p-3 rounded-xl border bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] transition-all text-left flex items-center justify-between gap-3"
+                        onClick={() => handleSelectSecondaryItem(itemNode)}
+                        className={`p-3 rounded-xl border transition-all text-left flex items-center justify-between gap-3 cursor-pointer ${
+                          isActive
+                            ? 'bg-violet-500/15 border-violet-500/40 ring-1 ring-violet-500/40 shadow-lg shadow-violet-500/10'
+                            : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06]'
+                        }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <div
@@ -3161,7 +3221,14 @@ export default function GrafoPage() {
                             {itemNode.type.slice(0, 3)}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[12px] font-bold text-white/90 truncate">{itemNode.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[12px] font-bold text-white/90 truncate">{itemNode.name}</p>
+                              {isActive && (
+                                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-violet-300 bg-violet-500/20 border border-violet-500/30 shrink-0">
+                                  Abierto
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: colors.text }}>
                               {itemNode.type}
                             </p>
@@ -3169,9 +3236,12 @@ export default function GrafoPage() {
                         </div>
 
                         <button
-                          onClick={() => handleNodeClick(itemNode)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNodeClick(itemNode);
+                          }}
                           className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
-                          title="Ver nodo en el grafo"
+                          title="Centrar en el grafo"
                         >
                           <ExternalLink size={13} />
                         </button>
@@ -3806,8 +3876,8 @@ export default function GrafoPage() {
                           })()}
                         </div>
 
-                        {/* List tasks and finances connected to this project node */}
-                        {(() => {
+                        {/* List tasks and finances connected to this project node (only when secondary panel is closed) */}
+                        {!showSecondaryPanel && (() => {
                           const connectedNodes = data?.links
                             .filter((l) => {
                               const tgtId = getNodeId(l.target);
