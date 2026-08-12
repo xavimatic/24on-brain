@@ -1172,8 +1172,8 @@ export default function GrafoPage() {
     }
   }, [drawerNode, hubContextNode]);
 
-  // ── Node click ────────────────────────────────────────────────────
-  const handleNodeClick = useCallback((node: any) => {
+  // ── Node click from canvas (opens left panel & compact Conexiones card on right) ──
+  const handleNodeClick = useCallback((node: any, openFullDrawer = false) => {
     setSelectedNode(node);
     if (node && node.x !== undefined && node.y !== undefined) {
       graphRef.current?.centerAt(node.x, node.y, 800);
@@ -1184,7 +1184,7 @@ export default function GrafoPage() {
       setHubContextNode(null);
       setDrawerNode(node);
       setDrawerMode('view');
-      setDrawerOpen(true);
+      setDrawerOpen(openFullDrawer);
       setShowSecondaryPanel(true);
       setSecondaryFilter('ALL');
     }
@@ -2692,15 +2692,15 @@ export default function GrafoPage() {
           </div>
         )}
 
-        {/* ── Selected Node Panel (entities only) ────────────────────── */}
+        {/* ── Compact Conexiones Panel (rendered on right when node selected & full drawer closed) ── */}
         {selectedNode && !drawerOpen && (
           <div 
-            className={`absolute top-5 right-5 z-10 ${isDarkMode ? 'bg-[#2d2d2e]/70 border-white/10 text-white' : 'bg-white/75 border-black/5 text-[#1d1d1f]'} backdrop-blur-md border rounded-2xl p-5 w-72 animate-fade-in shadow-2xl ${isDarkMode ? 'shadow-black/40' : 'shadow-black/10'} transition-all duration-300 pointer-events-auto`}
+            className={`absolute top-5 right-5 z-20 ${isDarkMode ? 'bg-[#1c1c1e]/90 border-white/10 text-white' : 'bg-white/90 border-black/10 text-[#1d1d1f]'} backdrop-blur-xl border rounded-2xl p-5 w-80 animate-fade-in shadow-2xl ${isDarkMode ? 'shadow-black/60' : 'shadow-black/15'} transition-all duration-300 pointer-events-auto`}
           >
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start justify-between mb-3">
               <div>
                 <div
-                  className="inline-block text-[9px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 rounded-md mb-2"
+                  className="inline-block text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-0.5 rounded-md mb-2"
                   style={{
                     backgroundColor: (NODE_COLORS[selectedNode.type] || NODE_COLORS.DEFAULT).fill + '20',
                     color: (NODE_COLORS[selectedNode.type] || NODE_COLORS.DEFAULT).fill,
@@ -2709,45 +2709,64 @@ export default function GrafoPage() {
                 >
                   {selectedNode.type}
                 </div>
-                <h2 className={`text-[15px] font-bold ${isDarkMode ? 'text-white/90' : 'text-[#1d1d1f]'} tracking-tight`}>{selectedNode.name}</h2>
+                <h2 className={`text-[15px] font-bold ${isDarkMode ? 'text-white/90' : 'text-[#1d1d1f]'} tracking-tight leading-snug`}>{selectedNode.name}</h2>
               </div>
-              <button onClick={() => setSelectedNode(null)} className={`${isDarkMode ? 'text-white/20 hover:text-white/60' : 'text-[#1d1d1f]/20 hover:text-[#1d1d1f]/60'} transition-colors text-lg leading-none mt-0.5`}>×</button>
+              <button 
+                onClick={() => setSelectedNode(null)} 
+                className={`p-1 rounded-lg ${isDarkMode ? 'text-white/30 hover:text-white/80 hover:bg-white/10' : 'text-[#1d1d1f]/30 hover:text-[#1d1d1f]/80 hover:bg-black/5'} transition-colors leading-none mt-0.5`}
+                title="Cerrar tarjeta"
+              >
+                <X size={15} />
+              </button>
             </div>
 
             {selectedNode.alias && selectedNode.alias.length > 0 && (
-              <div className="mb-4">
-                <p className={`text-[10px] ${isDarkMode ? 'text-white/25' : 'text-[#1d1d1f]/30'} uppercase tracking-wider mb-1.5 font-semibold`}>Alias</p>
+              <div className="mb-3">
+                <p className={`text-[10px] ${isDarkMode ? 'text-white/30' : 'text-[#1d1d1f]/40'} uppercase tracking-wider mb-1.5 font-semibold`}>Alias</p>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedNode.alias.map((a, i) => (
-                    <span key={i} className={`text-[10px] ${isDarkMode ? 'bg-white/[0.05] border-white/[0.08] text-white/50' : 'bg-black/[0.04] border-black/[0.08] text-[#1d1d1f]/60'} border px-2 py-0.5 rounded-md`}>{a}</span>
+                    <span key={i} className={`text-[10px] ${isDarkMode ? 'bg-white/[0.05] border-white/[0.08] text-white/60' : 'bg-black/[0.04] border-black/[0.08] text-[#1d1d1f]/70'} border px-2 py-0.5 rounded-md`}>{a}</span>
                   ))}
                 </div>
               </div>
             )}
 
             <div>
-              <p className={`text-[10px] ${isDarkMode ? 'text-white/25' : 'text-[#1d1d1f]/30'} uppercase tracking-wider mb-2 font-semibold`}>
-                Conexiones ({getNodeConnections(selectedNode).length})
+              <p className={`text-[10px] ${isDarkMode ? 'text-white/30' : 'text-[#1d1d1f]/40'} uppercase tracking-wider mb-2 font-semibold flex items-center justify-between`}>
+                <span>Conexiones Directas</span>
+                <span className="font-bold text-violet-400">{getNodeConnections(selectedNode).length}</span>
               </p>
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                 {getNodeConnections(selectedNode).map((conn, i) => (
                   <div
                     key={i}
-                    className={`flex items-center gap-2 text-[11px] ${isDarkMode ? 'bg-white/[0.03] border-white/[0.05] hover:bg-white/[0.06]' : 'bg-black/[0.02] border-black/[0.05] hover:bg-black/[0.04]'} border rounded-lg px-3 py-2 transition-colors cursor-pointer`}
+                    className={`flex items-center gap-2 text-[11px] ${isDarkMode ? 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.08]' : 'bg-black/[0.02] border-black/[0.06] hover:bg-black/[0.05]'} border rounded-xl px-3 py-2 transition-colors cursor-pointer`}
                     onClick={() => conn.otherNode && handleNodeClick(conn.otherNode)}
                   >
-                    <span className={isDarkMode ? 'text-white/20' : 'text-[#1d1d1f]/20'} style={{ fontSize: '9px' }}>{conn.direction}</span>
-                    <span className="font-medium" style={{ color: (NODE_COLORS[conn.otherNode?.type || 'DEFAULT'] || NODE_COLORS.DEFAULT).text }}>
+                    <span className={isDarkMode ? 'text-white/30' : 'text-[#1d1d1f]/30'} style={{ fontSize: '9px' }}>{conn.direction}</span>
+                    <span className="font-medium truncate flex-1" style={{ color: (NODE_COLORS[conn.otherNode?.type || 'DEFAULT'] || NODE_COLORS.DEFAULT).text }}>
                       {conn.otherNode?.name}
                     </span>
-                    <span className={isDarkMode ? 'text-white/15' : 'text-[#1d1d1f]/15'} style={{ fontSize: '9px', marginLeft: 'auto' }}>{conn.type.replace(/_/g, ' ')}</span>
+                    <span className={isDarkMode ? 'text-white/20' : 'text-[#1d1d1f]/25'} style={{ fontSize: '9px' }}>{conn.type.replace(/_/g, ' ')}</span>
                   </div>
                 ))}
                 {getNodeConnections(selectedNode).length === 0 && (
-                  <p className={`text-[11px] ${isDarkMode ? 'text-white/20' : 'text-[#1d1d1f]/20'} italic`}>Sin conexiones directas</p>
+                  <p className={`text-[11px] ${isDarkMode ? 'text-white/30' : 'text-[#1d1d1f]/30'} italic text-center py-2`}>Sin conexiones directas</p>
                 )}
               </div>
             </div>
+
+            <button
+              onClick={() => {
+                setDrawerNode(selectedNode);
+                setDrawerMode('view');
+                setDrawerOpen(true);
+              }}
+              className="w-full mt-4 flex items-center justify-center gap-2 text-[11px] font-bold py-2.5 px-3 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 border border-violet-500/30 transition-all shadow-sm"
+            >
+              <span>Ver Ficha Completa / Editar</span>
+              <ExternalLink size={13} />
+            </button>
           </div>
         )}
 
