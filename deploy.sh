@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "🚀 Iniciando despliegue de segundo-cerebro..."
 git pull origin main
-npm install
+npm install --include=dev
 npx prisma generate
 npx prisma db push
 npm run build
