@@ -1173,7 +1173,8 @@ export default function GrafoPage() {
   }, [drawerNode, hubContextNode]);
 
   // ── Node click from canvas (opens left panel & compact Conexiones card on right) ──
-  const handleNodeClick = useCallback((node: any, openFullDrawer = false) => {
+  const handleNodeClick = useCallback((node: any, openFullDrawer: boolean | any = false) => {
+    const shouldOpenDrawer = typeof openFullDrawer === 'boolean' ? openFullDrawer : false;
     setSelectedNode(node);
     if (node && node.x !== undefined && node.y !== undefined) {
       graphRef.current?.centerAt(node.x, node.y, 800);
@@ -1184,7 +1185,7 @@ export default function GrafoPage() {
       setHubContextNode(null);
       setDrawerNode(node);
       setDrawerMode('view');
-      setDrawerOpen(openFullDrawer);
+      setDrawerOpen(shouldOpenDrawer);
       setShowSecondaryPanel(true);
       setSecondaryFilter('ALL');
     }
