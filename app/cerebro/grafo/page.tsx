@@ -874,6 +874,36 @@ export default function GrafoPage() {
 
   const graphRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const graphContainerRef = useRef<HTMLDivElement>(null);
+  const [graphDimensions, setGraphDimensions] = useState({ width: 0, height: 0 });
+
+  // Track canvas container size for explicit width/height on ForceGraph2D
+  useEffect(() => {
+    if (!graphContainerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setGraphDimensions({ width: Math.floor(width), height: Math.floor(height) });
+      }
+    });
+    ro.observe(graphContainerRef.current);
+    // Set initial size
+    const rect = graphContainerRef.current.getBoundingClientRect();
+    setGraphDimensions({ width: Math.floor(rect.width), height: Math.floor(rect.height) });
+    return () => ro.disconnect();
+  }, []);
+
+  // Node drag handlers: pin fx/fy while dragging to avoid canvas pan
+  const handleNodeDrag = useCallback((node: any) => {
+    node.fx = node.x;
+    node.fy = node.y;
+  }, []);
+
+  const handleNodeDragEnd = useCallback((node: any) => {
+    // Keep node pinned at dropped position
+    node.fx = node.x;
+    node.fy = node.y;
+  }, []);
 
   // ── Filtered data based on Obsidian control settings ──────────────
   const filteredData = useMemo<GraphData>(() => {
@@ -2583,8 +2613,86 @@ export default function GrafoPage() {
 
       {/* ── Main Content ────────────────────────────────────────────── */}
       <div className="flex-1 relative">
+        {/* Canvas container — pointer-events managed at canvas level */}
+        <div ref={graphContainerRef} className="absolute inset-0" style={{ zIndex: 0 }}>
+          {filteredData && graphDimensions.width > 0 && (
+            <ForceGraph2D
+              ref={graphRef}
+              graphData={filteredData}
+              nodeId="id"
+              width={graphDimensions.width}
+              height={graphDimensions.height}
+              nodeCanvasObject={paintNode}
+              nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                // Uniform hit-area logic for ALL node types
+                let baseRadius = NODE_RADIUS[node.type] || NODE_RADIUS.DEFAULT;
+                if (node.extra?.is_destacado === true) baseRadius *= 1.8;
+                // TAREA culminada: smaller visual but keep a decent hitbox
+                if (node.type === 'TAREA') {
+                  const est = (node.extra?.estado || '').toUpperCase();
+                  if (est === 'CULMINADO') baseRadius = NODE_RADIUS.TAREA * 0.5;
+                }
+                // FINANZA pagada
+                if (node.type === 'FINANZA') {
+                  const est = (node.extra?.estado_pago || '').toUpperCase();
+                  if (est === 'PAGADO' || est === 'COBRADO') baseRadius = NODE_RADIUS.FINANZA * 0.45;
+                }
+                const isHub = node.type?.startsWith('HUB_') || node.type === 'LINKS' || node.id?.includes('hub');
+                if (isHub) baseRadius *= 1.4;
+                const r = Math.max(baseRadius / Math.max(globalScale * 0.15, 0.6), 6);
+                // Generous minimum hitbox of 10px so every node is easily clickable/draggable
+                const hitRadius = Math.max(r + (isHub ? 14 : 10), 10);
+
+                // Circle hit area
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, hitRadius, 0, 2 * Math.PI);
+                ctx.fill();
+
+                // Label hit area below (same for all nodes)
+                const label = node.name || '';
+                if (label) {
+                  const fontSize = Math.max(labelSize / globalScale, 2);
+                  ctx.font = `500 ${fontSize}px "Inter", sans-serif`;
+                  const displayLabel = label.length > 20 ? label.slice(0, 20) + '…' : label;
+                  const textWidth = ctx.measureText(displayLabel).width;
+                  const pad = isHub ? 10 : 6;
+                  ctx.fillRect(
+                    node.x - textWidth / 2 - pad,
+                    node.y + r + 4,
+                    textWidth + pad * 2,
+                    fontSize + 12
+                  );
+                }
+              }}
+              linkCanvasObject={paintLink}
+              onNodeClick={handleNodeClick}
+              onNodeHover={(node: any) => setHoveredNode(node || null)}
+              onNodeDrag={handleNodeDrag}
+              onNodeDragEnd={handleNodeDragEnd}
+              onBackgroundClick={() => {
+                setSelectedNode(null);
+                resetCreateForm();
+                setDrawerMode('global_create');
+                setDrawerNode({ id: 'global-create', name: 'Creación Global', type: 'DEFAULT' });
+                setDrawerOpen(true);
+              }}
+              backgroundColor={isDarkMode ? '#161617' : '#f5f5f7'}
+              d3AlphaDecay={0.015}
+              d3VelocityDecay={0.25}
+              warmupTicks={100}
+              cooldownTicks={300}
+              cooldownTime={5000}
+              enableNodeDrag={true}
+              enableZoomInteraction={true}
+              enablePanInteraction={true}
+            />
+          )}
+        </div>
+
+        {/* Loading / Error overlays — pointer-events-none so canvas always receives input */}
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 10 }}>
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-2 border-white/10 border-t-violet-500 rounded-full animate-spin" />
               <p className="text-[12px] text-white/40 font-medium">Cargando ecosistema...</p>
@@ -2593,70 +2701,12 @@ export default function GrafoPage() {
         )}
 
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 10 }}>
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 max-w-sm text-center">
               <p className="text-red-400 text-sm font-medium mb-1">Error</p>
               <p className="text-red-300/60 text-xs">{error}</p>
             </div>
           </div>
-        )}
-
-        {filteredData && (
-          <ForceGraph2D
-            ref={graphRef}
-            graphData={filteredData}
-            nodeId="id"
-            nodeCanvasObject={paintNode}
-            nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
-              let baseRadius = NODE_RADIUS[node.type] || NODE_RADIUS.DEFAULT;
-              if (node.extra?.is_destacado === true) baseRadius *= 1.8;
-              const isHub = node.type?.startsWith('HUB_') || node.type === 'LINKS' || node.id?.includes('hub');
-              if (isHub) baseRadius *= 1.4;
-              const r = Math.max(baseRadius / Math.max(globalScale * 0.15, 0.6), 6);
-              const hitRadius = r + (isHub ? 12 : 8);
-
-              // Circle hit area
-              ctx.fillStyle = color;
-              ctx.beginPath();
-              ctx.arc(node.x, node.y, hitRadius, 0, 2 * Math.PI);
-              ctx.fill();
-
-              // Label hit area below
-              const label = node.name || '';
-              if (label) {
-                const fontSize = Math.max(labelSize / globalScale, 2);
-                ctx.font = `500 ${fontSize}px "Inter", sans-serif`;
-                const displayLabel = label.length > 20 ? label.slice(0, 20) + '…' : label;
-                const textWidth = ctx.measureText(displayLabel).width;
-                const pad = isHub ? 10 : 6;
-                ctx.fillRect(
-                  node.x - textWidth / 2 - pad,
-                  node.y + r + 4,
-                  textWidth + pad * 2,
-                  fontSize + 12
-                );
-              }
-            }}
-            linkCanvasObject={paintLink}
-            onNodeClick={handleNodeClick}
-            onNodeHover={(node: any) => setHoveredNode(node || null)}
-            onBackgroundClick={() => {
-              setSelectedNode(null);
-              resetCreateForm();
-              setDrawerMode('global_create');
-              setDrawerNode({ id: 'global-create', name: 'Creación Global', type: 'DEFAULT' });
-              setDrawerOpen(true);
-            }}
-            backgroundColor={isDarkMode ? '#161617' : '#f5f5f7'}
-            d3AlphaDecay={0.015}
-            d3VelocityDecay={0.25}
-            warmupTicks={100}
-            cooldownTicks={300}
-            cooldownTime={5000}
-            enableNodeDrag={true}
-            enableZoomInteraction={true}
-            enablePanInteraction={true}
-          />
         )}
 
         {/* ── Settings Toggle Button ──────────────────────────────────── */}
