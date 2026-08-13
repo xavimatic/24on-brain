@@ -1202,9 +1202,8 @@ export default function GrafoPage() {
     }
   }, [drawerNode, hubContextNode]);
 
-  // ── Node click from canvas (opens left panel & compact Conexiones card on right) ──
-  const handleNodeClick = useCallback((node: any, openFullDrawer: boolean | any = false) => {
-    const shouldOpenDrawer = typeof openFullDrawer === 'boolean' ? openFullDrawer : false;
+  // ── Node click from canvas (opens full dual-panel drawer: Vínculos + Detalle) ──
+  const handleNodeClick = useCallback((node: any) => {
     setSelectedNode(node);
     if (node && node.x !== undefined && node.y !== undefined) {
       graphRef.current?.centerAt(node.x, node.y, 800);
@@ -1215,7 +1214,8 @@ export default function GrafoPage() {
       setHubContextNode(null);
       setDrawerNode(node);
       setDrawerMode('view');
-      setDrawerOpen(shouldOpenDrawer);
+      // Always open the full dual-panel view on node click
+      setDrawerOpen(true);
       setShowSecondaryPanel(true);
       setSecondaryFilter('ALL');
     }
@@ -1224,6 +1224,7 @@ export default function GrafoPage() {
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
     setDrawerMode('view');
+    setSelectedNode(null);
     setTimeout(() => setDrawerNode(null), 350);
   }, []);
 
@@ -2999,9 +3000,10 @@ export default function GrafoPage() {
         {/*  Interactive Drawer                                        */}
         {/* ═══════════════════════════════════════════════════════════ */}
 
-        {/* Backdrop */}
+        {/* Backdrop — click to close */}
         <div
-          className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-none ${drawerOpen ? 'opacity-100' : 'opacity-0'}`}
+          className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${drawerOpen ? 'opacity-100 pointer-events-auto cursor-pointer' : 'opacity-0 pointer-events-none'}`}
+          onClick={closeDrawer}
         />
 
         {/* Drawer Panel (Dual View layout) */}
