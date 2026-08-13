@@ -2714,31 +2714,31 @@ export default function GrafoPage() {
         {!showSettings && (
           <button
             onClick={() => setShowSettings(true)}
-            className={`absolute top-5 left-5 z-20 w-9 h-9 rounded-xl ${isDarkMode ? 'bg-[#2d2d2e]/70 hover:bg-[#3a3a3c]/70 border-white/[0.08] text-white/60 hover:text-white/90' : 'bg-white/75 hover:bg-white/90 border-black/[0.06] text-[#1d1d1f]/50 hover:text-[#1d1d1f]'} backdrop-blur-md border flex items-center justify-center shadow-lg hover:shadow-xl transition-all pointer-events-auto`}
+            className="absolute top-5 left-5 z-20 w-10 h-10 rounded-2xl bg-white/85 hover:bg-white border border-slate-200/80 text-slate-700 hover:text-slate-900 backdrop-blur-md flex items-center justify-center shadow-lg shadow-black/5 hover:shadow-xl transition-all pointer-events-auto"
             title="Ajustes y Filtros"
           >
-            <Sliders size={15} />
+            <Sliders size={16} />
           </button>
         )}
 
         {/* ── Standalone Stats (when no selection and settings closed) ── */}
         {filteredData && !selectedNode && !showSettings && (
-          <div className="absolute top-5 right-18 z-10 bg-[#111113]/90 backdrop-blur-xl border border-white/[0.06] rounded-xl p-4 pointer-events-auto">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30 mb-3">Estadísticas</p>
+          <div className="absolute top-5 right-18 z-10 bg-white/85 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-4 shadow-xl shadow-black/5 text-slate-800 pointer-events-auto">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-3">Estadísticas</p>
             <div className="space-y-2">
               {Object.entries(getStats()).map(([type, count]) => (
                 <div key={type} className="flex items-center justify-between gap-8">
-                  <span className="text-[11px] text-white/40 flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-600 font-medium flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: (NODE_COLORS[type] || NODE_COLORS.DEFAULT).fill }} />
                     {type}
                   </span>
-                  <span className="text-[13px] text-white/80 font-semibold tabular-nums">{count}</span>
+                  <span className="text-[13px] text-slate-900 font-bold tabular-nums">{count}</span>
                 </div>
               ))}
-              <div className="h-px bg-white/[0.06]" />
+              <div className="h-px bg-slate-200/80" />
               <div className="flex items-center justify-between gap-8">
-                <span className="text-[11px] text-white/40">Vínculos</span>
-                <span className="text-[13px] text-white/80 font-semibold tabular-nums">{filteredData.links.length}</span>
+                <span className="text-[11px] text-slate-600 font-medium">Vínculos</span>
+                <span className="text-[13px] text-slate-900 font-bold tabular-nums">{filteredData.links.length}</span>
               </div>
             </div>
           </div>
@@ -2822,27 +2822,27 @@ export default function GrafoPage() {
           </div>
         )}
 
-        {/* ── Obsidian Settings Panel ────────────────────────────────── */}
+        {/* ── Obsidian Settings Panel (iPhone / iOS Light Glassmorphism) ── */}
         {showSettings && filteredData && (
-          <div className={`absolute top-5 left-5 z-20 w-80 ${isDarkMode ? 'bg-[#2d2d2e]/80 border-white/10 text-white/80' : 'bg-white/85 border-black/5 text-[#1d1d1f]/80'} backdrop-blur-md border rounded-2xl p-5 shadow-2xl max-h-[85vh] overflow-y-auto animate-fade-in text-[12px] space-y-5 transition-colors duration-500 pointer-events-auto`}>
+          <div className="absolute top-5 left-5 z-20 w-84 bg-white/85 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 shadow-2xl shadow-black/10 text-slate-800 text-[12px] space-y-5 transition-all duration-300 pointer-events-auto max-h-[85vh] overflow-y-auto animate-fade-in">
             {/* Header */}
-            <div className={`flex items-center justify-between ${isDarkMode ? 'border-white/[0.06]' : 'border-black/[0.06]'} pb-3 border-b`}>
-              <div className={`flex items-center gap-2 ${isDarkMode ? 'text-white/90' : 'text-[#1d1d1f]'}`}>
-                <Sliders size={14} className="text-violet-400" />
-                <span className="text-[13px] font-bold tracking-tight">Filtros y Fuerzas</span>
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+              <div className="flex items-center gap-2 text-slate-900 font-bold">
+                <Sliders size={15} className="text-indigo-600" />
+                <span className="text-[14px] tracking-tight">Filtros y Fuerzas</span>
               </div>
               <button 
                 onClick={() => setShowSettings(false)} 
-                className={`w-6 h-6 rounded-md ${isDarkMode ? 'hover:bg-white/[0.06] text-white/40 hover:text-white/75' : 'hover:bg-black/[0.06] text-[#1d1d1f]/40 hover:text-[#1d1d1f]/75'} flex items-center justify-center transition-all`}
+                className="w-7 h-7 rounded-full bg-slate-100/80 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all"
                 title="Cerrar panel"
               >
-                <X size={12} />
+                <X size={13} />
               </button>
             </div>
 
             {/* Section 1: Filters */}
             <div className="space-y-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">Filtros de Nodo</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Filtros de Nodo</p>
               <div className="grid grid-cols-2 gap-2">
                 <FilterCheckbox label="Empresas" color={NODE_COLORS.EMPRESA.fill} checked={showEmpresas} onChange={setShowEmpresas} />
                 <FilterCheckbox label="Personas" color={NODE_COLORS.PERSONA.fill} checked={showPersonas} onChange={setShowPersonas} />
@@ -2863,32 +2863,32 @@ export default function GrafoPage() {
 
             {/* Section 2: Display */}
             <div className="space-y-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">Visualización</p>
-              <div className="space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Visualización</p>
+              <div className="space-y-3 bg-white/70 border border-slate-200/60 rounded-2xl p-3.5 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-white/60">Mostrar etiquetas</span>
+                  <span className="text-slate-700 font-medium">Mostrar etiquetas</span>
                   <input 
                     type="checkbox" 
                     checked={showLabels} 
                     onChange={(e) => setShowLabels(e.target.checked)}
-                    className="accent-violet-500 cursor-pointer h-4 w-4 rounded border-white/10 bg-white/5"
+                    className="accent-indigo-600 cursor-pointer h-4 w-4 rounded border-slate-300 bg-white"
                   />
                 </div>
                 {showLabels && (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-white/50 text-[11px]">Ocultar (mostrar solo en hover)</span>
+                      <span className="text-slate-600 text-[11px]">Ocultar (mostrar solo en hover)</span>
                       <input 
                         type="checkbox" 
                         checked={ocultarYMostrarEnHover} 
                         onChange={(e) => setOcultarYMostrarEnHover(e.target.checked)}
-                        className="accent-violet-500 cursor-pointer h-4 w-4 rounded border-white/10 bg-white/5"
+                        className="accent-indigo-600 cursor-pointer h-4 w-4 rounded border-slate-300 bg-white"
                       />
                     </div>
                     <div className="space-y-1">
-                      <div className="flex justify-between text-[11px] text-white/50">
+                      <div className="flex justify-between text-[11px] text-slate-600">
                         <span>Tamaño del texto</span>
-                        <span className="font-semibold">{labelSize}px</span>
+                        <span className="font-bold text-indigo-600">{labelSize}px</span>
                       </div>
                       <input 
                         type="range" 
@@ -2896,7 +2896,7 @@ export default function GrafoPage() {
                         max="20" 
                         value={labelSize} 
                         onChange={(e) => setLabelSize(Number(e.target.value))}
-                        className="w-full accent-violet-500 bg-white/10 h-1 rounded-lg cursor-pointer"
+                        className="w-full accent-indigo-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                       />
                     </div>
                   </>
@@ -2905,13 +2905,13 @@ export default function GrafoPage() {
             </div>
 
             {/* Section 3: Forces */}
-            <div className="space-y-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">Fuerzas físicas (D3)</p>
-              <div className="space-y-3.5">
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Fuerzas físicas (D3)</p>
+              <div className="space-y-3.5 bg-white/70 border border-slate-200/60 rounded-2xl p-3.5 shadow-2xs">
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-white/50">
+                  <div className="flex justify-between text-[11px] text-slate-600">
                     <span>Fuerza de repulsión</span>
-                    <span className="font-semibold text-violet-300">{repulsionStrength}</span>
+                    <span className="font-bold text-indigo-600">{repulsionStrength}</span>
                   </div>
                   <input 
                     type="range" 
@@ -2920,14 +2920,14 @@ export default function GrafoPage() {
                     step="10"
                     value={repulsionStrength} 
                     onChange={(e) => setRepulsionStrength(Number(e.target.value))}
-                    className="w-full accent-violet-500 bg-white/10 h-1 rounded-lg cursor-pointer"
+                    className="w-full accent-indigo-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-white/50">
+                  <div className="flex justify-between text-[11px] text-slate-600">
                     <span>Distancia de repulsión</span>
-                    <span className="font-semibold text-violet-300">{repulsionDistance}px</span>
+                    <span className="font-bold text-indigo-600">{repulsionDistance}px</span>
                   </div>
                   <input 
                     type="range" 
@@ -2936,14 +2936,14 @@ export default function GrafoPage() {
                     step="10"
                     value={repulsionDistance} 
                     onChange={(e) => setRepulsionDistance(Number(e.target.value))}
-                    className="w-full accent-violet-500 bg-white/10 h-1 rounded-lg cursor-pointer"
+                    className="w-full accent-indigo-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-white/50">
+                  <div className="flex justify-between text-[11px] text-slate-600">
                     <span>Distancia de vínculo</span>
-                    <span className="font-semibold text-violet-300">{linkDistance}px</span>
+                    <span className="font-bold text-indigo-600">{linkDistance}px</span>
                   </div>
                   <input 
                     type="range" 
@@ -2952,14 +2952,14 @@ export default function GrafoPage() {
                     step="5"
                     value={linkDistance} 
                     onChange={(e) => setLinkDistance(Number(e.target.value))}
-                    className="w-full accent-violet-500 bg-white/10 h-1 rounded-lg cursor-pointer"
+                    className="w-full accent-indigo-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-white/50">
+                  <div className="flex justify-between text-[11px] text-slate-600">
                     <span>Radio de colisión</span>
-                    <span className="font-semibold text-violet-300">{collisionRadius}px</span>
+                    <span className="font-bold text-indigo-600">{collisionRadius}px</span>
                   </div>
                   <input 
                     type="range" 
@@ -2967,29 +2967,29 @@ export default function GrafoPage() {
                     max="40" 
                     value={collisionRadius} 
                     onChange={(e) => setCollisionRadius(Number(e.target.value))}
-                    className="w-full accent-violet-500 bg-white/10 h-1 rounded-lg cursor-pointer"
+                    className="w-full accent-indigo-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                   />
                 </div>
               </div>
             </div>
 
             {/* Section 4: Statistics */}
-            <div className="space-y-3 border-t border-white/[0.06] pt-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">Estadísticas del Grafo</p>
-              <div className="space-y-1.5 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3.5">
+            <div className="space-y-3 border-t border-slate-200/80 pt-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Estadísticas del Grafo</p>
+              <div className="space-y-1.5 bg-white/70 border border-slate-200/60 rounded-2xl p-3.5 shadow-2xs">
                 {Object.entries(getStats()).map(([type, count]) => (
                   <div key={type} className="flex items-center justify-between text-[11px]">
-                    <span className="text-white/50 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: (NODE_COLORS[type] || NODE_COLORS.DEFAULT).fill }} />
+                    <span className="text-slate-600 flex items-center gap-1.5 font-medium">
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: (NODE_COLORS[type] || NODE_COLORS.DEFAULT).fill }} />
                       {type}
                     </span>
-                    <span className="text-white/80 font-bold tabular-nums">{count}</span>
+                    <span className="text-slate-900 font-bold tabular-nums">{count}</span>
                   </div>
                 ))}
-                <div className="h-px bg-white/[0.06] my-1.5" />
+                <div className="h-px bg-slate-200/60 my-1.5" />
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-white/50">Vínculos activos</span>
-                  <span className="text-white/80 font-bold tabular-nums">{filteredData.links.length}</span>
+                  <span className="text-slate-600 font-medium">Vínculos activos</span>
+                  <span className="text-slate-900 font-bold tabular-nums">{filteredData.links.length}</span>
                 </div>
               </div>
             </div>
@@ -3016,30 +3016,30 @@ export default function GrafoPage() {
               : 'w-full md:w-[480px] lg:w-[520px]'
           }`}
         >
-          {/* SECONDARY PANEL: Panel de Vínculos y Tareas Relacionadas */}
+          {/* SECONDARY PANEL: Panel de Vínculos y Tareas Relacionadas (iPhone / iOS Light Glassmorphism) */}
           {showSecondaryPanel && drawerNode && drawerNode.id !== 'global-create' && (
-            <div className="w-full md:w-1/2 lg:w-[480px] bg-[#141416]/[0.98] backdrop-blur-2xl border-b md:border-b-0 md:border-r border-white/[0.08] flex flex-col h-full overflow-hidden pointer-events-auto">
+            <div className="w-full md:w-1/2 lg:w-[480px] bg-white/90 backdrop-blur-2xl border-b md:border-b-0 md:border-r border-slate-200/80 flex flex-col h-full overflow-hidden pointer-events-auto text-slate-800 shadow-2xl">
               {/* Secondary Header */}
-              <div className="px-5 pt-4 pb-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+              <div className="px-5 pt-4 pb-3 border-b border-slate-200/70 flex items-center justify-between bg-slate-50/80">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 text-violet-300 shrink-0">
+                  <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 shrink-0 shadow-2xs">
                     <Sparkles size={16} />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-[13px] font-bold text-white/90 truncate flex items-center gap-1.5">
+                    <h3 className="text-[14px] font-bold text-slate-900 truncate flex items-center gap-1.5">
                       <span>Vínculos & Tareas</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200/70">
                         {linkedItems.allItems.length}
                       </span>
                     </h3>
-                    <p className="text-[10px] text-white/40 truncate">
-                      Asociados a <span className="text-white/70 font-semibold">"{drawerNode.name}"</span>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      Asociados a <span className="text-slate-800 font-semibold">"{drawerNode.name}"</span>
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowSecondaryPanel(false)}
-                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/80 transition-all shrink-0"
+                  className="p-1.5 rounded-xl bg-slate-200/60 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all shrink-0"
                   title="Ocultar panel de vínculos"
                 >
                   <ChevronRight size={15} />
@@ -3047,43 +3047,43 @@ export default function GrafoPage() {
               </div>
 
               {/* Filter Tabs */}
-              <div className="flex items-center gap-1 px-4 py-2 bg-white/[0.01] border-b border-white/[0.05] overflow-x-auto text-[11px]">
+              <div className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-100/70 border-b border-slate-200/60 overflow-x-auto text-[11px]">
                 <button
                   onClick={() => setSecondaryFilter('ALL')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                  className={`px-3 py-1 rounded-lg transition-all shrink-0 ${
                     secondaryFilter === 'ALL'
-                      ? 'bg-white/15 text-white font-bold'
-                      : 'text-white/40 hover:text-white/70'
+                      ? 'bg-white text-indigo-600 font-bold shadow-2xs border border-slate-200/80'
+                      : 'text-slate-500 hover:text-slate-800 font-medium'
                   }`}
                 >
                   Todos ({linkedItems.allItems.length})
                 </button>
                 <button
                   onClick={() => setSecondaryFilter('TAREAS')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                  className={`px-3 py-1 rounded-lg transition-all shrink-0 ${
                     secondaryFilter === 'TAREAS'
-                      ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
-                      : 'text-white/40 hover:text-white/70'
+                      ? 'bg-white text-amber-600 font-bold shadow-2xs border border-amber-200'
+                      : 'text-slate-500 hover:text-slate-800 font-medium'
                   }`}
                 >
                   Tareas ({linkedItems.tasks.length})
                 </button>
                 <button
                   onClick={() => setSecondaryFilter('FINANZAS')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                  className={`px-3 py-1 rounded-lg transition-all shrink-0 ${
                     secondaryFilter === 'FINANZAS'
-                      ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30'
-                      : 'text-white/40 hover:text-white/70'
+                      ? 'bg-white text-emerald-600 font-bold shadow-2xs border border-emerald-200'
+                      : 'text-slate-500 hover:text-slate-800 font-medium'
                   }`}
                 >
                   Finanzas ({linkedItems.finances.length})
                 </button>
                 <button
                   onClick={() => setSecondaryFilter('ENTIDADES')}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 ${
+                  className={`px-3 py-1 rounded-lg transition-all shrink-0 ${
                     secondaryFilter === 'ENTIDADES'
-                      ? 'bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30'
-                      : 'text-white/40 hover:text-white/70'
+                      ? 'bg-white text-indigo-600 font-bold shadow-2xs border border-indigo-200'
+                      : 'text-slate-500 hover:text-slate-800 font-medium'
                   }`}
                 >
                   Entidades ({linkedItems.entities.length + linkedItems.projects.length})
@@ -3101,10 +3101,10 @@ export default function GrafoPage() {
 
                   if (itemsToRender.length === 0) {
                     return (
-                      <div className="flex flex-col items-center justify-center h-56 p-6 text-center bg-white/[0.01] border border-dashed border-white/5 rounded-2xl my-4">
-                        <CheckSquare size={32} className="text-white/20 mb-2.5" />
-                        <p className="text-[13px] font-semibold text-white/60">No hay tareas ni elementos vinculados</p>
-                        <p className="text-[11px] text-white/35 mt-1.5 max-w-xs leading-relaxed">
+                      <div className="flex flex-col items-center justify-center h-56 p-6 text-center bg-white/60 border border-dashed border-slate-200 rounded-2xl my-4 text-slate-500">
+                        <CheckSquare size={32} className="text-slate-300 mb-2.5" />
+                        <p className="text-[13px] font-bold text-slate-700">No hay tareas ni elementos vinculados</p>
+                        <p className="text-[11px] text-slate-500 mt-1.5 max-w-xs leading-relaxed">
                           {secondaryFilter === 'TAREAS'
                             ? 'No hay tareas urgentes o pendientes en este nodo.'
                             : `Sin registros vinculados en esta sección para "${drawerNode.name}".`}
@@ -3128,14 +3128,14 @@ export default function GrafoPage() {
                         <div
                           key={itemNode.id}
                           onClick={() => handleSelectSecondaryItem(itemNode)}
-                          className={`p-3 rounded-xl border transition-all text-left flex flex-col gap-2 cursor-pointer ${
+                          className={`p-3.5 rounded-2xl border transition-all text-left flex flex-col gap-2 cursor-pointer ${
                             isActive
-                              ? 'bg-violet-500/15 border-violet-500/40 ring-1 ring-violet-500/40 shadow-lg shadow-violet-500/10'
+                              ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-500/20 shadow-md'
                               : isConcluida
-                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50 hover:opacity-80'
+                              ? 'bg-slate-50/80 border-slate-200/50 opacity-60 hover:opacity-90'
                               : isUrgente
-                              ? 'bg-red-500/[0.06] border-red-500/25 hover:bg-red-500/[0.12]'
-                              : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.08]'
+                              ? 'bg-red-50/80 border-red-200 hover:bg-red-50 shadow-2xs'
+                              : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs hover:shadow-md'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2.5">
@@ -3148,12 +3148,12 @@ export default function GrafoPage() {
                                 onChange={() =>
                                   handleToggleTaskCheckbox({ id: dbId(itemNode.id), estado: itemNode.extra?.estado })
                                 }
-                                className="accent-violet-500 h-3.5 w-3.5 mt-0.5 rounded cursor-pointer shrink-0"
+                                className="accent-indigo-600 h-4 w-4 mt-0.5 rounded border-slate-300 cursor-pointer shrink-0"
                               />
                               <div className="min-w-0 flex-1">
                                 <p
-                                  className={`text-[12px] font-medium leading-snug break-words ${
-                                    isConcluida ? 'line-through text-white/30' : 'text-white/90'
+                                  className={`text-[12px] font-semibold leading-snug break-words ${
+                                    isConcluida ? 'line-through text-slate-400' : 'text-slate-800'
                                   }`}
                                 >
                                   <span dangerouslySetInnerHTML={{ __html: renderFormattedText(itemNode.name) }} />
@@ -3161,33 +3161,33 @@ export default function GrafoPage() {
 
                                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                   {isActive && (
-                                    <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-violet-300 bg-violet-500/20 border border-violet-500/30">
+                                    <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-indigo-600 bg-indigo-100 border border-indigo-200">
                                       Abierto
                                     </span>
                                   )}
                                   {itemNode.extra?.proyecto && (
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 font-semibold border border-violet-500/20">
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-semibold border border-indigo-100">
                                       {itemNode.extra.proyecto}
                                     </span>
                                   )}
                                   {isUrgente && !isConcluida && (
-                                    <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md text-red-400 bg-red-500/15 border border-red-500/20 animate-pulse">
+                                    <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md text-red-600 bg-red-100 border border-red-200 animate-pulse">
                                       🔥 URGENTE
                                     </span>
                                   )}
                                   <span
                                     className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${
                                       isConcluida
-                                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                                        ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                                         : isSeguimiento
-                                        ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
-                                        : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                                        ? 'text-cyan-700 bg-cyan-50 border-cyan-200'
+                                        : 'text-amber-700 bg-amber-50 border-amber-200'
                                     }`}
                                   >
                                     {itemNode.extra?.estado || 'PENDIENTE'}
                                   </span>
                                   {itemNode.extra?.fecha_limite && (
-                                    <span className="text-[9px] text-white/40 flex items-center gap-1">
+                                    <span className="text-[9px] text-slate-500 font-medium flex items-center gap-1">
                                       📅 {formatDate(itemNode.extra.fecha_limite)}
                                     </span>
                                   )}
@@ -3200,7 +3200,7 @@ export default function GrafoPage() {
                                 e.stopPropagation();
                                 handleNodeClick(itemNode);
                               }}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
+                              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-all shrink-0"
                               title="Centrar en el grafo"
                             >
                               <ExternalLink size={13} />
@@ -3217,39 +3217,39 @@ export default function GrafoPage() {
                         <div
                           key={itemNode.id}
                           onClick={() => handleSelectSecondaryItem(itemNode)}
-                          className={`p-3 rounded-xl border transition-all text-left flex items-start justify-between gap-3 cursor-pointer ${
+                          className={`p-3.5 rounded-2xl border transition-all text-left flex items-start justify-between gap-3 cursor-pointer ${
                             isActive
-                              ? 'bg-emerald-500/15 border-emerald-500/40 ring-1 ring-emerald-500/40 shadow-lg shadow-emerald-500/10'
+                              ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-500/20 shadow-md'
                               : isPaid
-                              ? 'bg-white/[0.01] border-white/[0.04] opacity-50 hover:opacity-80'
-                              : 'bg-emerald-500/[0.04] border-emerald-500/20 hover:bg-emerald-500/[0.08]'
+                              ? 'bg-slate-50/80 border-slate-200/50 opacity-60 hover:opacity-90'
+                              : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs hover:shadow-md'
                           }`}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[13px] font-bold text-emerald-300">
+                              <span className="text-[13px] font-bold text-emerald-600">
                                 {formatGs(itemNode.extra?.monto || 0)}
                               </span>
                               {isActive && (
-                                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-emerald-300 bg-emerald-500/20 border border-emerald-500/30">
+                                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-emerald-700 bg-emerald-100 border border-emerald-200">
                                   Abierto
                                 </span>
                               )}
                               <span
                                 className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${
                                   isPaid
-                                    ? 'text-gray-400 bg-gray-500/10 border-gray-500/20'
-                                    : 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
+                                    ? 'text-slate-500 bg-slate-100 border-slate-200'
+                                    : 'text-emerald-700 bg-emerald-50 border-emerald-200'
                                 }`}
                               >
                                 {itemNode.extra?.estado_pago || 'PENDIENTE'}
                               </span>
                             </div>
-                            <p className="text-[12px] font-medium text-white/80 leading-snug break-words">
+                            <p className="text-[12px] font-medium text-slate-800 leading-snug break-words">
                               {itemNode.name}
                             </p>
                             {itemNode.extra?.proyecto && (
-                              <p className="text-[9px] text-violet-300/80 font-medium mt-1">
+                              <p className="text-[9px] text-indigo-600 font-semibold mt-1">
                                 Proyecto: {itemNode.extra.proyecto}
                               </p>
                             )}
@@ -3260,7 +3260,7 @@ export default function GrafoPage() {
                               e.stopPropagation();
                               handleNodeClick(itemNode);
                             }}
-                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
+                            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-all shrink-0"
                             title="Centrar en el grafo"
                           >
                             <ExternalLink size={13} />
@@ -3275,33 +3275,33 @@ export default function GrafoPage() {
                       <div
                         key={itemNode.id}
                         onClick={() => handleSelectSecondaryItem(itemNode)}
-                        className={`p-3 rounded-xl border transition-all text-left flex items-center justify-between gap-3 cursor-pointer ${
+                        className={`p-3.5 rounded-2xl border transition-all text-left flex items-center justify-between gap-3 cursor-pointer ${
                           isActive
-                            ? 'bg-violet-500/15 border-violet-500/40 ring-1 ring-violet-500/40 shadow-lg shadow-violet-500/10'
-                            : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06]'
+                            ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-500/20 shadow-md'
+                            : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs hover:shadow-md'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-bold"
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-[10px] font-bold shadow-2xs"
                             style={{
-                              backgroundColor: colors.fill + '25',
-                              color: colors.text,
-                              border: `1px solid ${colors.fill}40`,
+                              backgroundColor: colors.fill + '18',
+                              color: colors.fill,
+                              border: `1px solid ${colors.fill}35`,
                             }}
                           >
                             {itemNode.type.slice(0, 3)}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <p className="text-[12px] font-bold text-white/90 truncate">{itemNode.name}</p>
+                              <p className="text-[12px] font-bold text-slate-800 truncate">{itemNode.name}</p>
                               {isActive && (
-                                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-violet-300 bg-violet-500/20 border border-violet-500/30 shrink-0">
+                                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded text-indigo-600 bg-indigo-100 border border-indigo-200 shrink-0">
                                   Abierto
                                 </span>
                               )}
                             </div>
-                            <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: colors.text }}>
+                            <p className="text-[9px] uppercase tracking-wider font-bold" style={{ color: colors.fill }}>
                               {itemNode.type}
                             </p>
                           </div>
@@ -3312,7 +3312,7 @@ export default function GrafoPage() {
                             e.stopPropagation();
                             handleNodeClick(itemNode);
                           }}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/40 hover:text-white/90 transition-all shrink-0"
+                          className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-all shrink-0"
                           title="Centrar en el grafo"
                         >
                           <ExternalLink size={13} />
@@ -6513,27 +6513,27 @@ export default function GrafoPage() {
       <style jsx global>{`
         .drawer-input {
           width: 100%;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 10px;
+          background: rgba(241, 245, 249, 0.9);
+          border: 1px solid rgba(203, 213, 225, 0.8);
+          border-radius: 12px;
           padding: 10px 14px;
           font-size: 13px;
-          color: rgba(255,255,255,0.85);
+          color: #0f172a;
           outline: none;
           transition: all 0.2s;
           font-family: inherit;
         }
         .drawer-input:focus {
-          border-color: rgba(124,58,237,0.5);
-          background: rgba(255,255,255,0.06);
-          box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+          border-color: rgba(99, 102, 241, 0.8);
+          background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
         }
         .drawer-input::placeholder {
-          color: rgba(255,255,255,0.2);
+          color: #94a3b8;
         }
         .drawer-input option {
-          background: #1a1a1e;
-          color: rgba(255,255,255,0.85);
+          background: #ffffff;
+          color: #0f172a;
         }
       `}</style>
 
@@ -6617,16 +6617,16 @@ function FilterCheckbox({ label, color, checked, onChange }: {
   onChange: (val: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between" style={{ backgroundColor: 'var(--panel-hover)', border: '1px solid var(--panel-border)', borderRadius: '12px', padding: '8px 12px', cursor: 'pointer', transition: 'colors 0.2s' }}>
-      <span className="flex items-center gap-2" style={{ color: 'var(--text-color)', fontSize: '12px' }}>
-        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+    <label className="flex items-center justify-between bg-white/90 border border-slate-200/80 hover:border-slate-300 hover:bg-white rounded-xl px-3 py-2 cursor-pointer transition-all shadow-2xs">
+      <span className="flex items-center gap-2 text-slate-700 font-semibold text-[11.5px]">
+        <span className="w-2 h-2 rounded-full shadow-2xs" style={{ backgroundColor: color }} />
         {label}
       </span>
       <input 
         type="checkbox" 
         checked={checked} 
         onChange={(e) => onChange(e.target.checked)}
-        className="accent-violet-500 cursor-pointer h-3.5 w-3.5 rounded border-white/10 bg-white/5"
+        className="accent-indigo-600 cursor-pointer h-3.5 w-3.5 rounded border-slate-300 bg-white"
       />
     </label>
   );
